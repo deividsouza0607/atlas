@@ -1,0 +1,21 @@
+ATLAS PREMIUM — VERSÃO PARA SITE (HTML, CSS E JAVASCRIPT)
+
+Arquivos:
+- index.html: página principal
+- style.css: estilos
+- script.js: funcionalidades do álbum
+- assets/: ícones do Atlas
+
+COMO TESTAR
+1. Extraia esta pasta.
+2. Abra index.html no navegador. Para melhor compatibilidade, use um servidor estático local.
+
+COMO PUBLICAR
+Envie todos os arquivos e a pasta assets para a mesma pasta no seu serviço de hospedagem (por exemplo, public_html).
+O arquivo de entrada deve continuar se chamando index.html.
+
+IMPORTANTE
+- A biblioteca jsPDF é carregada pela internet via CDN; a exportação em PDF depende de conexão com a internet.
+- As cartas são salvas no armazenamento local (localStorage) do navegador e dispositivo. Elas não são sincronizadas entre aparelhos nem ficam automaticamente disponíveis em outros navegadores.
+- Esta versão não precisa de Node.js, Vite, Electron ou instalador para Windows.
+- Para proteger os dados, faça backup das cartas/fotos e evite limpar os dados do navegador.
