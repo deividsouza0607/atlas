@@ -36,10 +36,11 @@
         <div class="section-heading"><div><span class="step">01</span><h2>Registrar uma viagem</h2></div><span class="tiny-label">NOVA CARTA</span></div>
         <form id="travelForm">
           <div class="field-row">
-            <label>País visitado<input id="country" required placeholder="Ex.: Itália" autocomplete="country-name"></label>
+            <label>País visitado<input id="country" required placeholder="Ex.: Brasil ou Itália" autocomplete="country-name"></label>
             <label>Cidade<input id="city" required placeholder="Ex.: Roma"></label>
           </div>
-          <label>Ponto turístico <input id="landmark" required placeholder="Ex.: Coliseu"></label>
+          <label>Estado (opcional, para conquistas no Brasil)<select id="state"><option value="">Não se aplica / fora do Brasil</option><option>Acre</option><option>Alagoas</option><option>Amapá</option><option>Amazonas</option><option>Bahia</option><option>Ceará</option><option>Distrito Federal</option><option>Espírito Santo</option><option>Goiás</option><option>Maranhão</option><option>Mato Grosso</option><option>Mato Grosso do Sul</option><option>Minas Gerais</option><option>Pará</option><option>Paraíba</option><option>Paraná</option><option>Pernambuco</option><option>Piauí</option><option>Rio de Janeiro</option><option>Rio Grande do Norte</option><option>Rio Grande do Sul</option><option>Rondônia</option><option>Roraima</option><option>Santa Catarina</option><option>São Paulo</option><option>Sergipe</option><option>Tocantins</option></select></label>
+          <label>Ponto turístico <input id="landmark" required placeholder="Ex.: Coliseu de Roma"></label>
           <div class="field-row">
             <label>Data da visita<input id="visitDate" type="text" inputmode="numeric" autocomplete="off" placeholder="DD/MM/AAAA" maxlength="10" aria-describedby="visitDateHelp"><small id="visitDateHelp" class="field-help">Digite a data no formato dia/mês/ano.</small></label>
             <label>Seu nome (opcional)<input id="traveler" placeholder="Nome do viajante"></label>
@@ -70,7 +71,7 @@
           <div class="card-art" id="cardArt">
             <div class="art-orbit orbit-a"></div><div class="art-orbit orbit-b"></div>
             <div class="art-star">✦</div>
-            <div class="art-placeholder"><span>✧</span><small>SUA PRÓXIMA MEMÓRIA<br>COMEÇA AQUI</small></div>
+            <div class="art-placeholder"><span>🏛️</span><small>COLOSSEU DE ROMA<br>ITALIA · ROMA</small></div>
             <img id="previewPhoto" alt="Foto do ponto turístico" hidden>
             <div class="art-shade"></div>
             <div class="art-location"><small id="previewCountry">PAÍS A DESCOBRIR</small><h3 id="previewLandmark">Seu próximo destino</h3><span id="previewCity">A sua história começa aqui</span></div>
@@ -97,6 +98,9 @@
       <div class="section-heading"><div><span class="step">✦</span><h2 id="achievementsTitle">Insígnias de conquista</h2></div><span class="tiny-label">FOTOS POR PAÍS</span></div>
       <p class="achievements-intro">Registre fotos de cada país para desbloquear insígnias. A contagem é feita por país e considera apenas cartas que possuem uma foto.</p>
       <div id="achievementsGrid" class="achievements-grid"><div class="achievement-empty">Adicione fotos às suas cartas para começar a conquistar insígnias.</div></div>
+      <div class="section-heading state-achievement-heading"><div><span class="step">🇧🇷</span><h2>Conquistas por estado brasileiro</h2></div><span class="tiny-label">EXPLORADOR DO BRASIL</span></div>
+      <p class="achievements-intro">Selecione o estado ao registrar destinos no Brasil. As insígnias contam cartas com foto em cada estado, com novos níveis de exploração.</p>
+      <div id="stateAchievementsGrid" class="achievements-grid"><div class="achievement-empty">Registre uma carta no Brasil e selecione o estado visitado.</div></div>
     </section>
 
     <section class="album-section">

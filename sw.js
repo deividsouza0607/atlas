@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atlas-premium-web-v1';
+const CACHE_NAME = 'atlas-premium-web-v2';
 const CORE = ['./', './index.html', './style.css', './script.js', './manifest.webmanifest', './assets/atlas-globo-aviao.png', './assets/atlas-globo-aviao.ico', './assets/icon-192.png', './assets/icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting()));

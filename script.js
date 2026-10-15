@@ -277,12 +277,58 @@ function renderAchievements() {
   });
 }
 
+const STATE_MILESTONES = [
+  { count: 1, icon: "📍", name: "Primeira parada" },
+  { count: 2, icon: "🧭", name: "Explorador estadual" },
+  { count: 5, icon: "📸", name: "Colecionador regional" },
+  { count: 10, icon: "🏞️", name: "Conhecedor do estado" },
+  { count: 20, icon: "🏅", name: "Embaixador estadual" },
+  { count: 30, icon: "👑", name: "Lenda do estado" }
+];
+function renderStateAchievements() {
+  const grid = $("stateAchievementsGrid");
+  if (!grid) return;
+  const byState = new Map();
+  cards.filter(card => card.photo && safeText(card.state) && normalizePlace(card.country).match(/^(brasil|brazil)$/)).forEach(card => {
+    const key = normalizePlace(card.state);
+    if (!byState.has(key)) byState.set(key, { name: safeText(card.state), count: 0 });
+    byState.get(key).count++;
+  });
+  if (!byState.size) {
+    grid.innerHTML = '<div class="achievement-empty">Registre cartas com foto, país “Brasil” e selecione o estado visitado para desbloquear conquistas.</div>';
+    return;
+  }
+  grid.innerHTML = "";
+  [...byState.values()].sort((a,b) => b.count-a.count || a.name.localeCompare(b.name, "pt-BR")).forEach(state => {
+    const panel = document.createElement("article"); panel.className = "country-achievement state-achievement";
+    const heading = document.createElement("div"); heading.className = "country-achievement-heading";
+    const name = document.createElement("h3"); name.textContent = "🇧🇷 " + state.name;
+    const total = document.createElement("span"); total.className = "photo-total"; total.textContent = `${state.count} ${state.count === 1 ? "foto" : "fotos"}`;
+    heading.append(name, total);
+    const badges = document.createElement("div"); badges.className = "badge-list";
+    STATE_MILESTONES.forEach(m => {
+      const unlocked = state.count >= m.count;
+      const badge = document.createElement("div"); badge.className = "achievement-badge" + (unlocked ? " unlocked" : " locked");
+      badge.title = `${m.name}: ${m.count} foto(s) em ${state.name}`;
+      const icon = document.createElement("span"); icon.className = "achievement-icon"; icon.textContent = m.icon;
+      const label = document.createElement("b"); label.textContent = `${m.count}+ fotos`;
+      const caption = document.createElement("small"); caption.textContent = unlocked ? m.name : `${m.count-state.count} para desbloquear`;
+      badge.append(icon, label, caption); badges.appendChild(badge);
+    });
+    const next = STATE_MILESTONES.find(m => state.count < m.count);
+    const progress = document.createElement("p"); progress.className = "achievement-progress";
+    progress.textContent = next ? `Próxima conquista: ${next.count} fotos · ${state.count}/${next.count}` : "Todas as conquistas deste estado foram desbloqueadas!";
+    panel.append(heading, badges, progress); grid.appendChild(panel);
+  });
+}
+
 function renderStatsOnly() {
   $("countryCount").textContent = new Set(cards.map(c => normalizePlace(c.country)).filter(Boolean)).size;
   $("cardCount").textContent = cards.length;
   $("cardNumber").textContent = "Nº " + String(cards.length).padStart(3, "0");
   $("allPdfBtn").disabled = cards.length === 0;
   renderAchievements();
+  renderStateAchievements();
 }
 function dataUrlToBlob(dataUrl) {
   const parts = dataUrl.split(",");
@@ -292,9 +338,20 @@ function dataUrlToBlob(dataUrl) {
   return new Blob([bytes], {type:mime});
 }
 function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob); const a = document.createElement("a");
-  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1200);
+  if (!(blob instanceof Blob) || blob.size === 0) throw new Error("O arquivo gerado está vazio.");
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "atlas-premium-download";
+  a.style.display = "none";
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  // Alguns navegadores precisam de mais tempo para iniciar o download.
+  setTimeout(() => {
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, 30000);
 }
 function canvasFromImage(dataUrl) {
   return new Promise((resolve, reject) => {
@@ -398,7 +455,7 @@ $("travelForm").addEventListener("submit", (event) => {
   if (photoProcessing) { alert("Aguarde o processamento da foto terminar."); return; }
   const card = {
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
-    country: safeText($("country").value), city: safeText($("city").value),
+    country: safeText($("country").value), city: safeText($("city").value), state: safeText($("state")?.value),
     landmark: safeText($("landmark").value), visitDate: normalizeVisitDate($("visitDate").value),
     traveler: safeText($("traveler").value), memory: safeText($("memory").value),
     photo: currentPhotoData, photoOrientation: $("photoOrientation").value || "16:9", location: currentLocation
@@ -564,12 +621,17 @@ $("jpgBtn").addEventListener("click", async () => {
 $("printBtn").addEventListener("click", () => window.print());
 $("allPdfBtn").addEventListener("click", async () => {
   if (!cards.length) { alert("Seu álbum ainda não tem cartas."); return; }
-  if (!window.jspdf || !window.jspdf.jsPDF) {
-    alert("A biblioteca de PDF não carregou. Verifique a conexão com a internet e tente novamente."); return;
-  }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({orientation:"portrait", unit:"mm", format:"a4"});
-  cards.forEach((card, index) => {
+  const button = $("allPdfBtn");
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = "GERANDO ÁLBUM PDF...";
+  try {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      throw new Error("A biblioteca de PDF não carregou. Confira a conexão com a internet, atualize a página e tente novamente.");
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({orientation:"portrait", unit:"mm", format:"a4"});
+    cards.forEach((card, index) => {
     if (index > 0) doc.addPage();
     doc.setFillColor(25, 12, 42); doc.rect(0, 0, 210, 297, "F");
     doc.setDrawColor(197, 160, 255); doc.setLineWidth(.7); doc.roundedRect(12, 12, 186, 273, 4, 4, "S");
@@ -605,8 +667,16 @@ $("allPdfBtn").addEventListener("click", async () => {
     }
     doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(197, 160, 255);
     doc.text("MEMÓRIAS QUE ATRAVESSAM FRONTEIRAS", 105, 277, {align:"center"});
-  });
-  doc.save("Atlas_Premium_Album_Completo.pdf");
+    });
+    const pdfBlob = doc.output("blob");
+    downloadBlob(pdfBlob, "Atlas_Premium_Album_Completo.pdf");
+  } catch (err) {
+    console.error("Falha ao exportar álbum PDF:", err);
+    alert("Não foi possível baixar o álbum. Verifique a conexão com a internet e tente novamente.\\nDetalhe: " + (err?.message || err));
+  } finally {
+    button.disabled = cards.length === 0;
+    button.textContent = originalLabel;
+  }
 });
 const deleteAlbumBtn = document.getElementById("deleteAlbumBtn");
 if (deleteAlbumBtn) deleteAlbumBtn.addEventListener("click", () => {
@@ -634,5 +704,8 @@ document.addEventListener("keydown", (event) => {
 
 renderAlbum();
 if (cards.length) renderPreview(cards[cards.length - 1]);
-else { ["downloadBtn", "jpgBtn", "printBtn", "allPdfBtn"].forEach(id => $(id).disabled = true); }
+else {
+  renderPreview({country:"Itália", city:"Roma", landmark:"Coliseu de Roma", visitDate:"", traveler:"", memory:"", photo:"", photoOrientation:"16:9"});
+  ["downloadBtn", "jpgBtn", "printBtn", "allPdfBtn"].forEach(id => $(id).disabled = true);
+}
 renderStatsOnly();
