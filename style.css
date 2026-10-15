@@ -100,3 +100,6 @@ input:not([type=file]),textarea{background:#160824!important;border-color:rgba(1
 .art-orbit{border-color:rgba(255,255,255,.28)!important}.art-star{color:#ffe0ff!important}.art-placeholder{color:#fff!important;text-shadow:0 2px 12px #40006b!important}.art-location small{color:#f8ddff!important}.card-details{background:#fcf8ff!important}.detail-label,.detail-label span{color:#8e24ff!important}.card-details p{color:#50345f!important}.card-footer{border-top-color:#e5c9f8!important}.card-footer small{color:#8d6b9d!important}.card-footer b{color:#29113d!important}.stamp{border-color:#bd55ff!important;color:#8e24ff!important}.card-bottom{border-top-color:#e5c9f8!important}
 .secondary-button:not(:disabled):hover,.album-actions button:hover{border-color:#c15cff!important;color:#e0aaff!important}.album-item{border-color:rgba(190,105,255,.3)!important}.album-thumb{background:linear-gradient(135deg,#8e24ff,#3b0c64)!important}.album-thumb:after{color:#f0c5ff!important}
 @media print{.travel-card{border-color:#8e24ff!important;background:#fcf8ff!important}}
+
+.field-help{display:block;margin-top:-4px;font-size:10px;font-weight:400;letter-spacing:0;color:#b8a5c9}
+#visitDate{min-height:44px;appearance:none;-webkit-appearance:none;touch-action:manipulation}

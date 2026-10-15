@@ -19,6 +19,26 @@ function normalizePlace(value) {
 function placeKey(card) {
   return [card.country, card.city, card.landmark].map(normalizePlace).join("|");
 }
+function normalizeVisitDate(value) {
+  const raw = safeText(value);
+  if (!raw) return "";
+  // Aceita DD/MM/AAAA (mais fácil de digitar no celular) e AAAA-MM-DD.
+  let match = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (match) {
+    const day = Number(match[1]), month = Number(match[2]), year = Number(match[3]);
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+    return `${match[3]}-${match[2]}-${match[1]}`;
+  }
+  match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    if (date.getFullYear() !== Number(match[1]) || date.getMonth() !== Number(match[2]) - 1 || date.getDate() !== Number(match[3])) return null;
+    return raw;
+  }
+  return null;
+}
+
 function formattedDate(value) {
   if (!value) return "A definir";
   const d = new Date(value + "T12:00:00");
@@ -164,16 +184,23 @@ $("photo").addEventListener("change", (event) => {
   reader.onload = () => { currentPhotoData = reader.result; $("photoName").textContent = "Foto selecionada: " + file.name; };
   reader.readAsDataURL(file);
 });
+$("visitDate").addEventListener("input", () => {
+  const field = $("visitDate");
+  const digits = field.value.replace(/\D/g, "").slice(0, 8);
+  const formatted = digits.length <= 2 ? digits : digits.length <= 4 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+  field.value = formatted;
+});
 $("travelForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const card = {
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
     country: safeText($("country").value), city: safeText($("city").value),
-    landmark: safeText($("landmark").value), visitDate: $("visitDate").value,
+    landmark: safeText($("landmark").value), visitDate: normalizeVisitDate($("visitDate").value),
     traveler: safeText($("traveler").value), memory: safeText($("memory").value),
     photo: currentPhotoData, photoOrientation: $("photoOrientation").value || "16:9"
   };
   if (!card.country || !card.city || !card.landmark) { alert("Preencha país, cidade e ponto turístico."); return; }
+  if (card.visitDate === null) { alert("Digite uma data válida no formato DD/MM/AAAA, por exemplo 15/10/2026."); $("visitDate").focus(); return; }
   const duplicate = cards.find(c => placeKey(c) === placeKey(card));
   if (duplicate) {
     alert(`Este local já está registrado no álbum: ${duplicate.landmark} — ${duplicate.city}, ${duplicate.country}. Não é possível cadastrar o mesmo país, cidade e ponto turístico duas vezes.`);
