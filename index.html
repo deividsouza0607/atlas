@@ -87,12 +87,32 @@
       </div>
     </section>
 
+    <section class="achievements-section" aria-labelledby="achievementsTitle">
+      <div class="section-heading"><div><span class="step">✦</span><h2 id="achievementsTitle">Insígnias de conquista</h2></div><span class="tiny-label">FOTOS POR PAÍS</span></div>
+      <p class="achievements-intro">Registre fotos de cada país para desbloquear insígnias. A contagem é feita por país e considera apenas cartas que possuem uma foto.</p>
+      <div id="achievementsGrid" class="achievements-grid"><div class="achievement-empty">Adicione fotos às suas cartas para começar a conquistar insígnias.</div></div>
+    </section>
+
     <section class="album-section">
       <div class="section-heading"><div><span class="step">03</span><h2>Meu álbum de conquistas</h2></div><div class="album-heading-actions"><span class="tiny-label">SUA COLEÇÃO PESSOAL</span><button id="deleteAlbumBtn" class="delete-album-button" type="button">EXCLUIR ÁLBUM</button></div></div>
       <div id="albumGrid" class="album-grid"><div class="empty-state"><span>✧</span><b>Sua jornada começa agora</b><p>Gere sua primeira carta para vê-la aparecer aqui.</p></div></div>
     </section>
     <footer><span>ATLAS PREMIUM</span><span>FEITO PARA GUARDAR O EXTRAORDINÁRIO.</span></footer>
   </main>
+  <div id="achievementCelebration" class="achievement-celebration" role="dialog" aria-modal="true" aria-labelledby="celebrationTitle" aria-describedby="celebrationDescription" hidden>
+    <div class="celebration-backdrop" data-close-celebration="true"></div>
+    <div class="celebration-panel">
+      <button class="celebration-close" type="button" aria-label="Fechar conquista" data-close-celebration="true">×</button>
+      <div class="celebration-rays" aria-hidden="true">✦</div>
+      <div id="celebrationIcon" class="celebration-icon" aria-hidden="true">🏆</div>
+      <p class="celebration-kicker">NOVA CONQUISTA DESBLOQUEADA</p>
+      <h2 id="celebrationTitle">Primeira lembrança</h2>
+      <p id="celebrationDescription">Você está construindo sua história de viagens!</p>
+      <div id="celebrationCountry" class="celebration-country"></div>
+      <button id="celebrationOk" class="primary-button celebration-ok" type="button">CONTINUAR EXPLORANDO ✦</button>
+      <div class="celebration-confetti" aria-hidden="true"></div>
+    </div>
+  </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.1/jspdf.umd.min.js"></script>
   <script defer src="script.js"></script>
 </body>

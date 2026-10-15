@@ -139,11 +139,144 @@ function renderAlbum() {
   });
   $("allPdfBtn").disabled = cards.length === 0;
 }
+
+const ACHIEVEMENT_MILESTONES = [
+  { count: 1, icon: "📸", name: "Primeira lembrança" },
+  { count: 3, icon: "🗺️", name: "Rota iniciada" },
+  { count: 5, icon: "🧭", name: "Explorador" },
+  { count: 10, icon: "🏅", name: "Viajante dedicado" },
+  { count: 15, icon: "🎒", name: "Mochileiro" },
+  { count: 20, icon: "📍", name: "Caçador de lugares" },
+  { count: 25, icon: "🌍", name: "Especialista local" },
+  { count: 30, icon: "🏞️", name: "Colecionador de paisagens" },
+  { count: 40, icon: "🧳", name: "Viajante experiente" },
+  { count: 50, icon: "👑", name: "Mestre das viagens" },
+  { count: 75, icon: "🦅", name: "Explorador lendário" },
+  { count: 100, icon: "💎", name: "Lenda do Atlas" },
+  { count: 150, icon: "🏰", name: "Cronista de destinos" },
+  { count: 200, icon: "🌐", name: "Embaixador do mundo" },
+  { count: 300, icon: "🚀", name: "Grande aventureiro" },
+  { count: 500, icon: "🥇", name: "Ícone das viagens" },
+  { count: 750, icon: "🌟", name: "Mestre explorador" },
+  { count: 1000, icon: "🏆", name: "Imortal do Atlas" }
+];
+
+function countPhotosForCountry(country) {
+  const key = normalizePlace(country);
+  return cards.filter(card => card.photo && normalizePlace(card.country) === key).length;
+}
+
+function playAchievementSound() {
+  // Efeito sonoro sintetizado no navegador: não precisa baixar nenhum arquivo.
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const context = new AudioContextClass();
+    const now = context.currentTime;
+    [523.25, 659.25, 783.99, 1046.5].forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, now + index * 0.12);
+      gain.gain.setValueAtTime(0.0001, now + index * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.16, now + index * 0.12 + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.12 + 0.32);
+      oscillator.connect(gain); gain.connect(context.destination);
+      oscillator.start(now + index * 0.12);
+      oscillator.stop(now + index * 0.12 + 0.34);
+    });
+    window.setTimeout(() => context.close().catch(() => {}), 1100);
+  } catch (error) { /* Áudio indisponível: a animação continua normalmente. */ }
+}
+
+function celebrateAchievement(milestone, country, count) {
+  const modal = $("achievementCelebration");
+  if (!modal) return;
+  $("celebrationIcon").textContent = milestone.icon;
+  $("celebrationTitle").textContent = milestone.name;
+  $("celebrationDescription").textContent = `Você desbloqueou a marca de ${milestone.count} ${milestone.count === 1 ? "foto" : "fotos"} deste país!`;
+  $("celebrationCountry").textContent = `${flagForCountry(country)} ${country} · ${count} ${count === 1 ? "foto registrada" : "fotos registradas"}`;
+  modal.hidden = false;
+  document.body.classList.add("celebration-open");
+  const panel = modal.querySelector(".celebration-panel");
+  panel.classList.remove("celebration-enter");
+  void panel.offsetWidth;
+  panel.classList.add("celebration-enter");
+  const confetti = modal.querySelector(".celebration-confetti");
+  confetti.innerHTML = "";
+  for (let i = 0; i < 36; i++) {
+    const piece = document.createElement("i");
+    piece.style.setProperty("--confetti-x", `${Math.round(Math.random() * 100)}%`);
+    piece.style.setProperty("--confetti-delay", `${(Math.random() * 0.7).toFixed(2)}s`);
+    piece.style.setProperty("--confetti-rotation", `${Math.round(Math.random() * 720 - 360)}deg`);
+    piece.className = "confetti-piece";
+    confetti.appendChild(piece);
+  }
+  playAchievementSound();
+  $("celebrationOk").focus();
+}
+
+function closeAchievementCelebration() {
+  const modal = $("achievementCelebration");
+  if (modal) modal.hidden = true;
+  document.body.classList.remove("celebration-open");
+}
+
+function renderAchievements() {
+  const grid = $("achievementsGrid");
+  if (!grid) return;
+  // Níveis de conquista calculados separadamente para cada país.
+  const milestones = ACHIEVEMENT_MILESTONES;
+  const countryPhotos = new Map();
+  cards.filter(card => card.photo && safeText(card.country)).forEach(card => {
+    const key = normalizePlace(card.country);
+    if (!countryPhotos.has(key)) countryPhotos.set(key, { name: safeText(card.country), count: 0 });
+    countryPhotos.get(key).count++;
+  });
+  if (!countryPhotos.size) {
+    grid.innerHTML = '<div class="achievement-empty">Adicione fotos às suas cartas para começar a conquistar insígnias.</div>';
+    return;
+  }
+  grid.innerHTML = "";
+  [...countryPhotos.values()].sort((a,b) => b.count-a.count || a.name.localeCompare(b.name, "pt-BR")).forEach(country => {
+    const panel = document.createElement("article"); panel.className = "country-achievement";
+    const heading = document.createElement("div"); heading.className = "country-achievement-heading";
+    const name = document.createElement("h3"); name.textContent = flagForCountry(country.name) + " " + country.name;
+    const total = document.createElement("span"); total.className = "photo-total"; total.textContent = `${country.count} ${country.count === 1 ? "foto" : "fotos"}`;
+    heading.append(name, total);
+    const badges = document.createElement("div"); badges.className = "badge-list";
+    milestones.forEach(milestone => {
+      const unlocked = country.count >= milestone.count;
+      const badge = document.createElement("div"); badge.className = "achievement-badge" + (unlocked ? " unlocked" : " locked");
+      badge.title = `${milestone.name}: ${milestone.count} foto(s) de ${country.name}`;
+      const icon = document.createElement("span"); icon.className = "achievement-icon"; icon.textContent = milestone.icon;
+      const label = document.createElement("b"); label.textContent = milestone.count + "+ fotos";
+      const caption = document.createElement("small"); caption.textContent = unlocked ? milestone.name : `${milestone.count - country.count} para desbloquear`;
+      badge.append(icon, label, caption); badges.appendChild(badge);
+    });
+    const next = milestones.find(m => country.count < m.count);
+    const progressText = document.createElement("p"); progressText.className = "achievement-progress";
+    if (next) {
+      const previous = milestones.filter(m => m.count < next.count).slice(-1)[0]?.count || 0;
+      const percent = Math.min(100, Math.round(((country.count - previous) / (next.count - previous)) * 100));
+      progressText.textContent = `Próxima conquista: ${next.count} fotos · ${country.count}/${next.count}`;
+      const bar = document.createElement("div"); bar.className = "achievement-progress-track";
+      const fill = document.createElement("span"); fill.style.width = percent + "%"; bar.appendChild(fill);
+      panel.append(heading, badges, progressText, bar);
+    } else {
+      progressText.textContent = "Todas as insígnias deste país foram desbloqueadas!";
+      panel.append(heading, badges, progressText);
+    }
+    grid.appendChild(panel);
+  });
+}
+
 function renderStatsOnly() {
   $("countryCount").textContent = new Set(cards.map(c => normalizePlace(c.country)).filter(Boolean)).size;
   $("cardCount").textContent = cards.length;
   $("cardNumber").textContent = "Nº " + String(cards.length).padStart(3, "0");
   $("allPdfBtn").disabled = cards.length === 0;
+  renderAchievements();
 }
 function dataUrlToBlob(dataUrl) {
   const parts = dataUrl.split(",");
@@ -206,7 +339,13 @@ $("travelForm").addEventListener("submit", (event) => {
     alert(`Este local já está registrado no álbum: ${duplicate.landmark} — ${duplicate.city}, ${duplicate.country}. Não é possível cadastrar o mesmo país, cidade e ponto turístico duas vezes.`);
     return;
   }
+  const previousCountryPhotoCount = card.photo ? countPhotosForCountry(card.country) : 0;
   cards.push(card); saveCards(); renderPreview(card); renderAlbum(); renderStatsOnly();
+  if (card.photo) {
+    const newCount = previousCountryPhotoCount + 1;
+    const unlocked = ACHIEVEMENT_MILESTONES.find(milestone => milestone.count === newCount);
+    if (unlocked) celebrateAchievement(unlocked, card.country, newCount);
+  }
   $("travelForm").reset(); currentPhotoData = ""; $("photoName").textContent = "";
 });
 $("downloadBtn").addEventListener("click", () => {
@@ -370,6 +509,15 @@ if (deleteAlbumBtn) deleteAlbumBtn.addEventListener("click", () => {
   const cardNumber = document.getElementById("cardNumber"); if (cardNumber) cardNumber.textContent = "Nº 001";
   alert("Álbum excluído. Todas as cartas locais foram removidas.");
 });
+
+$("achievementCelebration")?.addEventListener("click", (event) => {
+  if (event.target.closest("[data-close-celebration]")) closeAchievementCelebration();
+});
+$("celebrationOk")?.addEventListener("click", closeAchievementCelebration);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && $("achievementCelebration") && !$("achievementCelebration").hidden) closeAchievementCelebration();
+});
+
 renderAlbum();
 if (cards.length) renderPreview(cards[cards.length - 1]);
 else { ["downloadBtn", "jpgBtn", "printBtn", "allPdfBtn"].forEach(id => $(id).disabled = true); }
