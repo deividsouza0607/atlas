@@ -3,14 +3,19 @@ const STORAGE_KEY = "atlasPremiumCards_v1";
 let cards = loadCards();
 let currentPhotoData = "";
 let currentCardId = null;
+let currentLocation = null;
+let photoProcessing = false;
 
 function loadCards() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
   catch { return []; }
 }
 function saveCards() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cards)); }
-  catch { alert("O armazenamento do navegador está cheio. Tente usar uma foto menor."); }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cards)); return true; }
+  catch {
+    alert("O armazenamento local está cheio. Exclua algumas cartas ou fotos e tente novamente. Faça uma cópia de segurança antes de limpar dados.");
+    return false;
+  }
 }
 function safeText(value) { return String(value || "").trim(); }
 function normalizePlace(value) {
@@ -74,8 +79,9 @@ function countryPalette(country) {
   return palettes[normalizePlace(country)] || ["#8B52B6", "#E7C77E", "#BD8CFF"];
 }
 function applyPreviewPalette(card) {
-  // Identidade visual Atlas Premium: roxo vibrante com detalhes lavanda.
-  const primary = "#8e24ff", secondary = "#ffffff", accent = "#c15cff";
+  // A moldura recebe detalhes com as cores da bandeira do país visitado,
+  // preservando o estilo roxo premium do Atlas.
+  const [primary, secondary, accent] = countryPalette(card.country);
   const travelCard = document.querySelector(".travel-card");
   const art = document.querySelector(".card-art");
   if (travelCard) {
@@ -307,16 +313,80 @@ function canvasFromImage(dataUrl) {
 $("photo").addEventListener("change", (event) => {
   const file = event.target.files && event.target.files[0];
   currentPhotoData = ""; $("photoName").textContent = "";
+  photoProcessing = false;
   if (!file) return;
   if (!file.type.startsWith("image/")) { alert("Selecione um arquivo de imagem."); event.target.value = ""; return; }
-  if (file.size > 1.5 * 1024 * 1024) {
-    alert("A foto deve ter até 1,5 MB para caber no armazenamento local. Redimensione e tente novamente.");
+  if (file.size > 10 * 1024 * 1024) {
+    alert("A foto deve ter no máximo 10 MB.");
     event.target.value = ""; return;
   }
+  // Redimensiona e comprime a imagem para reduzir o uso do armazenamento local,
+  // sem impedir a seleção de fotos originais de até 10 MB.
+  photoProcessing = true;
+  $("photoName").textContent = "Processando foto… aguarde antes de gerar a carta.";
   const reader = new FileReader();
-  reader.onload = () => { currentPhotoData = reader.result; $("photoName").textContent = "Foto selecionada: " + file.name; };
+  reader.onerror = () => { photoProcessing = false; alert("Não foi possível ler esta foto. Tente outra imagem."); event.target.value = ""; $("photoName").textContent = ""; };
+  reader.onload = () => {
+    const img = new Image();
+    img.onerror = () => { photoProcessing = false; alert("O arquivo selecionado não pôde ser aberto como imagem."); event.target.value = ""; $("photoName").textContent = ""; };
+    img.onload = () => {
+      const maxSide = 1800;
+      const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { photoProcessing = false; alert("Não foi possível processar esta foto neste dispositivo."); event.target.value = ""; $("photoName").textContent = ""; return; }
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      currentPhotoData = canvas.toDataURL("image/jpeg", 0.82);
+      photoProcessing = false;
+      $("photoName").textContent = `Foto selecionada: ${file.name} (processada para economizar espaço)`;
+    };
+    img.src = reader.result;
+  };
   reader.readAsDataURL(file);
 });
+$("locationBtn").addEventListener("click", () => {
+  const status = $("locationStatus");
+  if (!navigator.geolocation) {
+    status.textContent = "Este dispositivo ou ambiente não oferece geolocalização.";
+    return;
+  }
+  status.textContent = "Obtendo localização GPS… permita o acesso quando solicitado.";
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      currentLocation = {
+        latitude: Number(position.coords.latitude.toFixed(6)),
+        longitude: Number(position.coords.longitude.toFixed(6)),
+        accuracy: Math.round(position.coords.accuracy),
+        capturedAt: new Date().toISOString()
+      };
+      status.textContent = `Localização registrada: ${currentLocation.latitude}, ${currentLocation.longitude} (precisão aproximada: ${currentLocation.accuracy} m).`;
+      let link = $("locationMapLink");
+      if (!link) {
+        link = document.createElement("a");
+        link.id = "locationMapLink";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        status.insertAdjacentElement("afterend", link);
+      }
+      link.href = `https://www.google.com/maps?q=${currentLocation.latitude},${currentLocation.longitude}`;
+      link.textContent = "Abrir posição no Google Maps";
+    },
+    (error) => {
+      const messages = {
+        1: "Permissão de localização negada. Autorize nas configurações do navegador/dispositivo.",
+        2: "Não foi possível determinar a posição. Verifique o GPS e tente novamente.",
+        3: "Tempo esgotado ao obter a posição. Tente novamente em local aberto."
+      };
+      status.textContent = messages[error.code] || "Não foi possível obter a localização.";
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+});
+
 $("visitDate").addEventListener("input", () => {
   const field = $("visitDate");
   const digits = field.value.replace(/\D/g, "").slice(0, 8);
@@ -325,12 +395,13 @@ $("visitDate").addEventListener("input", () => {
 });
 $("travelForm").addEventListener("submit", (event) => {
   event.preventDefault();
+  if (photoProcessing) { alert("Aguarde o processamento da foto terminar."); return; }
   const card = {
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
     country: safeText($("country").value), city: safeText($("city").value),
     landmark: safeText($("landmark").value), visitDate: normalizeVisitDate($("visitDate").value),
     traveler: safeText($("traveler").value), memory: safeText($("memory").value),
-    photo: currentPhotoData, photoOrientation: $("photoOrientation").value || "16:9"
+    photo: currentPhotoData, photoOrientation: $("photoOrientation").value || "16:9", location: currentLocation
   };
   if (!card.country || !card.city || !card.landmark) { alert("Preencha país, cidade e ponto turístico."); return; }
   if (card.visitDate === null) { alert("Digite uma data válida no formato DD/MM/AAAA, por exemplo 15/10/2026."); $("visitDate").focus(); return; }
@@ -340,13 +411,17 @@ $("travelForm").addEventListener("submit", (event) => {
     return;
   }
   const previousCountryPhotoCount = card.photo ? countPhotosForCountry(card.country) : 0;
-  cards.push(card); saveCards(); renderPreview(card); renderAlbum(); renderStatsOnly();
+  cards.push(card);
+  if (!saveCards()) { cards.pop(); return; }
+  renderPreview(card); renderAlbum(); renderStatsOnly();
   if (card.photo) {
     const newCount = previousCountryPhotoCount + 1;
     const unlocked = ACHIEVEMENT_MILESTONES.find(milestone => milestone.count === newCount);
     if (unlocked) celebrateAchievement(unlocked, card.country, newCount);
   }
-  $("travelForm").reset(); currentPhotoData = ""; $("photoName").textContent = "";
+  $("travelForm").reset(); currentPhotoData = ""; currentLocation = null; $("photoName").textContent = "";
+  $("locationStatus").textContent = "Permita o acesso à localização para registrar as coordenadas do local visitado.";
+  const mapLink = $("locationMapLink"); if (mapLink) mapLink.remove();
 });
 $("downloadBtn").addEventListener("click", () => {
   const text = [
@@ -366,9 +441,41 @@ function flagForCountry(country) {
     "estados unidos":"🇺🇸", "eua":"🇺🇸", "united states":"🇺🇸", "inglaterra":"🇬🇧", "reino unido":"🇬🇧", "japão":"🇯🇵", "japao":"🇯🇵",
     "china":"🇨🇳", "argentina":"🇦🇷", "chile":"🇨🇱", "uruguai":"🇺🇾", "paraguai":"🇵🇾", "peru":"🇵🇪", "canadá":"🇨🇦", "canada":"🇨🇦",
     "méxico":"🇲🇽", "mexico":"🇲🇽", "grécia":"🇬🇷", "grecia":"🇬🇷", "suíça":"🇨🇭", "suica":"🇨🇭", "holanda":"🇳🇱", "países baixos":"🇳🇱",
-    "austrália":"🇦🇺", "australia":"🇦🇺", "índia":"🇮🇳", "india":"🇮🇳", "coreia do sul":"🇰🇷", "tailândia":"🇹🇭", "tailandia":"🇹🇭", "egito":"🇪🇬", "áfrica do sul":"🇿🇦"
+    "austrália":"🇦🇺", "australia":"🇦🇺", "índia":"🇮🇳", "india":"🇮🇳", "coreia do sul":"🇰🇷", "tailândia":"🇹🇭", "tailandia":"🇹🇭", "egito":"🇪🇬", "áfrica do sul":"🇿🇦",
+    "nova zelândia":"🇳🇿", "nova zelandia":"🇳🇿", "irlanda":"🇮🇪", "áustria":"🇦🇹", "austria":"🇦🇹", "bélgica":"🇧🇪", "belgica":"🇧🇪", "colômbia":"🇨🇴", "colombia":"🇨🇴", "bolívia":"🇧🇴", "bolivia":"🇧🇴", "equador":"🇪🇨", "venezuela":"🇻🇪", "costa rica":"🇨🇷", "cuba":"🇨🇺", "israel":"🇮🇱", "turquia":"🇹🇷", "turquia":"🇹🇷", "rússia":"🇷🇺", "russia":"🇷🇺", "coreia do norte":"🇰🇵", "indonésia":"🇮🇩", "indonesia":"🇮🇩", "vietnã":"🇻🇳", "vietna":"🇻🇳", "singapura":"🇸🇬", "malásia":"🇲🇾", "malasia":"🇲🇾", "marrocos":"🇲🇦", "quênia":"🇰🇪", "kenia":"🇰🇪", "nigéria":"🇳🇬", "nigeria":"🇳🇬", "emirados árabes unidos":"🇦🇪", "emirados arabes unidos":"🇦🇪", "catar":"🇶🇦", "arábia saudita":"🇸🇦", "arabia saudita":"🇸🇦"
   };
   return flags[normalizePlace(country)] || "🌐";
+}
+function drawCountryFlag(ctx, country, x, y, w, h) {
+  // Desenha a bandeira diretamente no canvas para que apareça também no JPG exportado,
+  // mesmo em computadores sem fonte de emojis coloridos.
+  const c = normalizePlace(country);
+  ctx.save(); roundedRect(ctx, x, y, w, h, 5); ctx.clip();
+  const fill = (color, rx=x, ry=y, rw=w, rh=h) => { ctx.fillStyle=color; ctx.fillRect(rx,ry,rw,rh); };
+  const stripeH = h/3, stripeW = w/3;
+  const horizontal = (a,b,d) => { fill(a,y,w,stripeH); fill(b,y+stripeH,w,stripeH); fill(d,y+2*stripeH,w,stripeH); };
+  const vertical = (a,b,d) => { fill(a,x,y===undefined?y:y,w/3,h); fill(b,x+w/3,y,w/3,h); fill(d,x+2*w/3,y,w/3,h); };
+  if (['franca','france','italia','italy','irlanda','ireland','romenia','romania','belgica','belgium','nigeria'].includes(c)) {
+    const colors = ({franca:['#0055A4','#fff','#EF4135'],france:['#0055A4','#fff','#EF4135'],italia:['#009246','#fff','#CE2B37'],italy:['#009246','#fff','#CE2B37'],irlanda:['#169B62','#fff','#FF883E'],ireland:['#169B62','#fff','#FF883E'],romenia:['#002B7F','#FCD116','#CE1126'],romania:['#002B7F','#FCD116','#CE1126'],belgica:['#000','#F5D000','#EF3340'],belgium:['#000','#F5D000','#EF3340'],nigeria:['#008751','#fff','#008751']})[c]; vertical(...colors);
+  } else if (['alemanha','germany','holanda','paises baixos','netherlands','russia','russia federation','austria','austria','hungria','hungary','tailandia','thailand'].includes(c)) {
+    const colors = ({alemanha:['#000','#DD0000','#FFCE00'],germany:['#000','#DD0000','#FFCE00'],holanda:['#AE1C28','#fff','#21468B'],'paises baixos':['#AE1C28','#fff','#21468B'],netherlands:['#AE1C28','#fff','#21468B'],russia:['#fff','#0039A6','#D52B1E'],'russia federation':['#fff','#0039A6','#D52B1E'],austria:['#ED2939','#fff','#ED2939'],hungria:['#CE2939','#fff','#477050'],hungary:['#CE2939','#fff','#477050'],tailandia:['#A51931','#fff','#2D2A4A'],thailand:['#A51931','#fff','#2D2A4A']})[c]; horizontal(...colors);
+  } else if (['brasil','brazil'].includes(c)) { fill('#169B62'); ctx.fillStyle='#FFDF00'; ctx.beginPath();ctx.moveTo(x+w/2,y+h*.15);ctx.lineTo(x+w*.88,y+h/2);ctx.lineTo(x+w/2,y+h*.85);ctx.lineTo(x+w*.12,y+h/2);ctx.closePath();ctx.fill();ctx.fillStyle='#002776';ctx.beginPath();ctx.arc(x+w/2,y+h/2,w*.18,0,Math.PI*2);ctx.fill(); }
+  else if (['japao','japan'].includes(c)) { fill('#fff');ctx.fillStyle='#BC002D';ctx.beginPath();ctx.arc(x+w/2,y+h/2,Math.min(w,h)*.23,0,Math.PI*2);ctx.fill(); }
+  else if (['china'].includes(c)) { fill('#DE2910');ctx.fillStyle='#FFDE00';ctx.font=`bold ${h*.42}px Arial`;ctx.fillText('★',x+w*.12,y+h*.48); }
+  else if (['argentina'].includes(c)) { horizontal('#74ACDF','#fff','#74ACDF');ctx.fillStyle='#F6B40E';ctx.font=`bold ${h*.3}px Arial`;ctx.fillText('☀',x+w*.42,y+h*.58); }
+  else if (['espanha','spain'].includes(c)) { fill('#AA151B');fill('#F1BF00',x,y+h*.25,w,h*.5); }
+  else if (['portugal'].includes(c)) { fill('#006600');fill('#FF0000',x+w*.4,y,w*.6,h); }
+  else if (['estados unidos','eua','united states','usa'].includes(c)) { for(let i=0;i<7;i++) fill(i%2?'#fff':'#B22234',x,y+i*h/7,w,h/7);fill('#3C3B6E',x,y,w*.45,h*.54); }
+  else if (['canada','canadá'].includes(c)) { fill('#fff');fill('#D80621',x,y,w*.25,h);fill('#D80621',x+w*.75,y,w*.25,h);ctx.fillStyle='#D80621';ctx.font=`bold ${h*.52}px Arial`;ctx.textAlign='center';ctx.fillText('✦',x+w/2,y+h*.68); }
+  else if (['mexico','méxico'].includes(c)) { vertical('#006847','#fff','#CE1126'); }
+  else if (['chile'].includes(c)) { fill('#fff');fill('#D52B1E',x,y+h/2,w,h/2);fill('#0039A6',x,y,w/3,h/2); }
+  else if (['uruguai'].includes(c)) { fill('#fff');for(let i=0;i<4;i++)fill('#5CB8E6',x,y+i*h/4,w,h/10); }
+  else if (['paraguai'].includes(c)) horizontal('#D52B1E','#fff','#0038A8');
+  else if (['peru'].includes(c)) vertical('#D91023','#fff','#D91023');
+  else if (['suica','switzerland'].includes(c)) { fill('#D52B1E');fill('#fff',x+w*.42,y+h*.18,w*.16,h*.64);fill('#fff',x+w*.22,y+h*.4,w*.56,h*.2); }
+  else if (['grecia','greece'].includes(c)) { fill('#fff');for(let i=0;i<5;i++)fill('#0D5EAF',x,y+i*h/5,w,h/10);fill('#0D5EAF',x,y,w*.4,h*.55);fill('#fff',x+w*.16,y,w*.08,h*.55);fill('#fff',x,y+h*.22,w*.4,h*.11); }
+  else { fill('#fff');ctx.fillStyle=countryPalette(country)[0];ctx.fillRect(x,y,w,h/3);ctx.fillStyle=countryPalette(country)[2];ctx.fillRect(x,y+2*h/3,w,h/3); }
+  ctx.restore();
 }
 function roundedRect(ctx, x, y, w, h, r) {
   ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.closePath();
@@ -398,7 +505,14 @@ async function makeTravelCardJpg(card) {
   ctx.strokeStyle="#8e24ff"; ctx.lineWidth=6; ctx.strokeRect(39,33,1122,H-66);
   ctx.fillStyle="#6410a8"; ctx.font="bold 30px Georgia"; ctx.fillText("ATLAS · DIÁRIO DE VIAGEM",76,88);
   ctx.fillStyle="#8a52b0"; ctx.font="18px Arial"; ctx.fillText("UMA MEMÓRIA PARA GUARDAR",78,120);
-  ctx.font="58px Arial"; ctx.textAlign="right"; ctx.fillText(flagForCountry(card.country),1118,102); ctx.textAlign="left";
+  // Selo de bandeira dentro da moldura, com fundo branco para destacar o emoji.
+  ctx.save();
+  ctx.fillStyle = "#ffffff";
+  roundedRect(ctx, 1010, 48, 108, 76, 12); ctx.fill();
+  ctx.strokeStyle = countryPalette(card.country)[0]; ctx.lineWidth = 3;
+  roundedRect(ctx, 1010, 48, 108, 76, 12); ctx.stroke();
+  drawCountryFlag(ctx, card.country, 1024, 58, 80, 56);
+  ctx.restore(); ctx.textAlign="left"; ctx.textBaseline="alphabetic";
   const px=portrait?305:76, py=150, pw=portrait?590:1048, ph=portrait?1048:590;
   ctx.fillStyle="#ffffff"; roundedRect(ctx,px-12,py-12,pw+24,ph+24,5); ctx.fill();
   ctx.strokeStyle="#c15cff"; ctx.lineWidth=4; ctx.strokeRect(px-6,py-6,pw+12,ph+12);

@@ -1,0 +1,16 @@
+{
+  "name": "Atlas Premium — Meu Álbum de Viagens",
+  "short_name": "Atlas Premium",
+  "description": "Crie cartas colecionáveis dos seus destinos e organize seu álbum de viagens.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#10051F",
+  "theme_color": "#170b2a",
+  "icons": [
+    {"src":"assets/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"assets/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}

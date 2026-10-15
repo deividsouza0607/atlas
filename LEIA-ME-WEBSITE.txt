@@ -1,0 +1,42 @@
+ATLAS PREMIUM — VERSÃO WEBSITE
+================================
+
+Esta pasta contém a versão web do Atlas Premium. Ela usa HTML, CSS e JavaScript e não precisa do Electron nem de instalação no computador.
+
+COMO TESTAR NO COMPUTADOR
+1. Extraia todos os arquivos desta pasta.
+2. Abra index.html no navegador para experimentar as funções principais.
+3. Para testar instalação como aplicativo (PWA), câmera, localização e funcionamento offline, publique em HTTPS ou execute por localhost. Abrir por file:// não habilita todos os recursos do navegador.
+
+COMO PUBLICAR NA INTERNET
+1. Envie TODO o conteúdo desta pasta para a pasta pública do seu serviço de hospedagem (por exemplo, public_html/atlas/).
+2. Mantenha os nomes e a estrutura dos arquivos, incluindo a pasta assets.
+3. Acesse o endereço HTTPS onde os arquivos foram publicados.
+
+RECURSOS
+- Criar cartas de viagens e visualizar o álbum.
+- Foto de arquivo ou câmera do celular (quando o navegador permitir).
+- Formatos de foto vertical 9:16 e horizontal 16:9.
+- Bandeira do país na imagem exportada da carta.
+- Exportação de JPG, impressão/PDF e PDF do álbum, conforme recursos do navegador.
+- Insígnias de conquistas e efeitos de celebração.
+- Layout adaptável a computador e celular.
+- PWA: em hospedagem HTTPS, navegadores compatíveis podem oferecer opção de instalar o Atlas Premium na tela inicial.
+
+IMPORTANTE SOBRE DADOS E PRIVACIDADE
+- Esta versão salva cartas no armazenamento local do navegador deste dispositivo/perfil. Não existe sincronização automática entre dispositivos nem conta online nesta versão.
+- Limpar os dados do navegador pode apagar as cartas. Exporte/imprima cópias importantes.
+- Fotos são redimensionadas/comprimidas antes de serem guardadas, mas o armazenamento do navegador tem limites. Se ficar cheio, exporte o que precisa e remova cartas/fotos antigas.
+- A localização GPS requer permissão do usuário e HTTPS (ou localhost). O GPS é opcional.
+- A exportação PDF usa a biblioteca jsPDF por CDN e pode exigir conexão à internet.
+- O service worker guarda os arquivos principais para acesso offline após a primeira visita, mas recursos externos, como a biblioteca de PDF, podem continuar exigindo internet.
+
+ESTRUTURA
+index.html                 Página principal
+style.css                  Visual roxo premium e adaptação para telas
+script.js                  Funções do álbum e cartas
+manifest.webmanifest        Configuração de instalação PWA
+sw.js                       Cache básico para acesso offline
+assets/                     Ícones do Atlas Premium
+
+Esta é uma versão estática para hospedagem. Para contas de usuário, sincronização na nuvem, recuperação de dados ou coleção compartilhada entre dispositivos, será necessário adicionar backend e banco de dados.

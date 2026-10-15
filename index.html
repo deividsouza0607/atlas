@@ -7,6 +7,8 @@
   <meta name="description" content="Atlas Premium: seu álbum pessoal de cartas colecionáveis de viagens.">
   <title>Atlas Premium — Meu Álbum de Viagens</title>
   <link rel="icon" href="assets/atlas-globo-aviao.ico" sizes="any">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -49,9 +51,13 @@
               <option value="16:9" selected>Horizontal · 16:9</option>
             </select>
           </label>
-          <label class="upload-label" for="photo"><span class="upload-icon">＋</span><span><b>Adicionar foto do destino</b><small>Opcional · JPG, PNG ou WebP</small></span><span class="upload-action">ESCOLHER</span></label>
-          <input id="photo" type="file" accept="image/*" hidden>
+          <label class="upload-label" for="photo"><span class="upload-icon">＋</span><span><b>Adicionar foto do destino</b><small>Opcional · JPG, PNG ou WebP · até 10 MB · câmera do celular</small></span><span class="upload-action">ESCOLHER</span></label>
+          <input id="photo" type="file" accept="image/*" capture="environment" hidden>
           <div id="photoName" class="photo-name" aria-live="polite"></div>
+          <div class="location-tools">
+            <button id="locationBtn" class="secondary-button" type="button">📍 Verificar minha localização</button>
+            <p id="locationStatus" class="photo-name" aria-live="polite">Permita o acesso à localização para registrar as coordenadas do local visitado.</p>
+          </div>
           <button class="primary-button" type="submit">✦ &nbsp; GERAR CARTA PREMIUM <span>↗</span></button>
         </form>
         <p class="privacy-note">🔒 Seus registros ficam salvos localmente neste computador. A edição completa permite cartas e exportações ilimitadas.</p>
@@ -115,5 +121,6 @@
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.1/jspdf.umd.min.js"></script>
   <script defer src="script.js"></script>
+  <script>if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) { window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(err => console.warn("Service worker não registrado:", err))); }</script>
 </body>
 </html>
