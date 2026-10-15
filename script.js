@@ -337,21 +337,36 @@ function dataUrlToBlob(dataUrl) {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return new Blob([bytes], {type:mime});
 }
-function downloadBlob(blob, filename) {
+async function downloadBlob(blob, filename) {
   if (!(blob instanceof Blob) || blob.size === 0) throw new Error("O arquivo gerado está vazio.");
+  const safeName = filename || "atlas-premium-download";
+  // Android WebViews podem bloquear downloads iniciados por links blob:.
+  // Quando disponível, oferece o arquivo pela folha nativa de compartilhamento.
+  const ua = navigator.userAgent || "";
+  const isAndroidWebView = /Android/i.test(ua) && (/;\s*wv\)/i.test(ua) || !!window.Android || !!window.atlasAndroid);
+  if (isAndroidWebView && typeof navigator.share === "function" && typeof File === "function") {
+    try {
+      const file = new File([blob], safeName, {type: blob.type || "application/octet-stream"});
+      if (!navigator.canShare || navigator.canShare({files:[file]})) {
+        await navigator.share({files:[file], title:safeName, text:"Arquivo exportado pelo Atlas Premium"});
+        return;
+      }
+    } catch (err) {
+      if (err && err.name === "AbortError") return;
+      console.warn("Compartilhamento nativo indisponível; tentando download pelo navegador.", err);
+    }
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = filename || "atlas-premium-download";
-  a.style.display = "none";
+  a.download = safeName;
+  a.style.position = "fixed";
+  a.style.left = "-10000px";
   a.rel = "noopener";
   document.body.appendChild(a);
   a.click();
-  // Alguns navegadores precisam de mais tempo para iniciar o download.
-  setTimeout(() => {
-    a.remove();
-    URL.revokeObjectURL(url);
-  }, 30000);
+  // Mantém o URL vivo por mais tempo para navegadores móveis e WebViews lentos.
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 120000);
 }
 function canvasFromImage(dataUrl) {
   return new Promise((resolve, reject) => {
@@ -480,7 +495,7 @@ $("travelForm").addEventListener("submit", (event) => {
   $("locationStatus").textContent = "Permita o acesso à localização para registrar as coordenadas do local visitado.";
   const mapLink = $("locationMapLink"); if (mapLink) mapLink.remove();
 });
-$("downloadBtn").addEventListener("click", () => {
+$("downloadBtn").addEventListener("click", async () => {
   const text = [
     "ATLAS PREMIUM — CARTA DE VIAGEM", "================================",
     `País: ${$("previewCountry").textContent}`,
@@ -489,7 +504,7 @@ $("downloadBtn").addEventListener("click", () => {
     `Data da visita: ${$("previewDate").textContent}`, "",
     $("previewLetter").textContent, "", "Memórias que atravessam fronteiras."
   ].join("\n");
-  downloadBlob(new Blob([text], {type:"text/plain;charset=utf-8"}), "carta-premium-atlas.txt");
+  try { await downloadBlob(new Blob([text], {type:"text/plain;charset=utf-8"}), "carta-premium-atlas.txt"); } catch (err) { alert("Não foi possível baixar a carta. " + (err?.message || err)); }
 });
 function flagForCountry(country) {
   const flags = {
@@ -611,7 +626,7 @@ $("jpgBtn").addEventListener("click", async () => {
       if (result && !result.canceled) alert("Carta JPG salva com sucesso!\n" + result.filePath);
     } else {
       const blob = dataUrlToBlob(dataUrl);
-      downloadBlob(blob, filename);
+      await downloadBlob(blob, filename);
     }
   } catch (err) {
     console.error("Falha ao gerar/baixar carta JPG:", err);
@@ -669,7 +684,7 @@ $("allPdfBtn").addEventListener("click", async () => {
     doc.text("MEMÓRIAS QUE ATRAVESSAM FRONTEIRAS", 105, 277, {align:"center"});
     });
     const pdfBlob = doc.output("blob");
-    downloadBlob(pdfBlob, "Atlas_Premium_Album_Completo.pdf");
+    await downloadBlob(pdfBlob, "Atlas_Premium_Album_Completo.pdf");
   } catch (err) {
     console.error("Falha ao exportar álbum PDF:", err);
     alert("Não foi possível baixar o álbum. Verifique a conexão com a internet e tente novamente.\\nDetalhe: " + (err?.message || err));
