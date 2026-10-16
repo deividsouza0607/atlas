@@ -5,6 +5,8 @@ let currentPhotoData = "";
 let currentCardId = null;
 let currentLocation = null;
 let photoProcessing = false;
+let editingCardId = null;
+let currentPreviewCard = null;
 
 function loadCards() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
@@ -94,6 +96,7 @@ function applyPreviewPalette(card) {
   if (art) art.style.border = `4px solid ${accent}`;
 }
 function renderPreview(card) {
+  currentPreviewCard = card;
   const art = document.getElementById("cardArt"); if (art) { art.classList.toggle("photo-portrait", card.photoOrientation === "9:16"); art.classList.toggle("photo-landscape", card.photoOrientation !== "9:16"); }
   currentCardId = card.id;
   applyPreviewPalette(card);
@@ -126,25 +129,95 @@ function renderAlbum() {
   grid.innerHTML = "";
   [...cards].reverse().forEach(card => {
     const item = document.createElement("article"); item.className = "album-item";
-    const thumb = document.createElement("div"); thumb.className = "album-thumb";
-    if (card.photo) { const img = document.createElement("img"); img.src = card.photo; img.alt = card.landmark; thumb.appendChild(img); }
+    const thumb = document.createElement("button"); thumb.type = "button"; thumb.className = "album-thumb";
+    thumb.setAttribute("aria-label", `Ver carta de ${card.landmark}`);
+    if (card.photo) { const img = document.createElement("img"); img.src = card.photo; img.alt = ""; thumb.appendChild(img); }
+    const overlay = document.createElement("span"); overlay.className = "mini-card-shade";
+    const miniFlag = document.createElement("span"); miniFlag.className = "mini-card-flag"; miniFlag.textContent = flagForCountry(card.country);
+    const miniLabel = document.createElement("small"); miniLabel.textContent = safeText(card.country).toLocaleUpperCase("pt-BR");
+    const miniTitle = document.createElement("b"); miniTitle.textContent = safeText(card.landmark) || "Carta de viagem";
+    const miniCity = document.createElement("em"); miniCity.textContent = safeText(card.city);
+    overlay.append(miniFlag, miniLabel, miniTitle, miniCity); thumb.appendChild(overlay);
+    thumb.addEventListener("click", () => openLargeCard(card));
     const info = document.createElement("div"); info.className = "album-info";
-    const country = document.createElement("small"); country.textContent = card.country.toLocaleUpperCase("pt-BR");
-    const title = document.createElement("h3"); title.textContent = card.landmark;
-    const city = document.createElement("p"); city.textContent = `${card.city} · ${formattedDate(card.visitDate)}`;
+    const country = document.createElement("small"); country.textContent = safeText(card.country).toLocaleUpperCase("pt-BR");
+    const title = document.createElement("h3"); title.textContent = safeText(card.landmark);
+    const city = document.createElement("p"); city.textContent = `${safeText(card.city)} · ${formattedDate(card.visitDate)}`;
     const actions = document.createElement("div"); actions.className = "album-actions";
-    const view = document.createElement("button"); view.textContent = "VER CARTA"; view.addEventListener("click", () => { renderPreview(card); window.scrollTo({top: 0, behavior:"smooth"}); });
+    const view = document.createElement("button"); view.textContent = "VER CARTA"; view.addEventListener("click", () => openLargeCard(card));
+    const edit = document.createElement("button"); edit.textContent = "EDITAR"; edit.addEventListener("click", () => beginEdit(card));
     const del = document.createElement("button"); del.textContent = "EXCLUIR"; del.addEventListener("click", () => {
       if (confirm(`Excluir a carta de ${card.landmark}?`)) {
         cards = cards.filter(c => c.id !== card.id); saveCards(); renderAlbum(); renderStatsOnly();
         if (cards.length) renderPreview(cards[cards.length - 1]);
-        else { $("downloadBtn").disabled = $("jpgBtn").disabled = $("printBtn").disabled = $("allPdfBtn").disabled = true; }
+        else { currentPreviewCard = null; $("downloadBtn").disabled = $("jpgBtn").disabled = $("printBtn").disabled = $("allPdfBtn").disabled = true; }
       }
     });
-    actions.append(view, del); info.append(country, title, city, actions); item.append(thumb, info); grid.appendChild(item);
+    actions.append(view, edit, del); info.append(country, title, city, actions); item.append(thumb, info); grid.appendChild(item); enableInteractive3DCard(item);
   });
   $("allPdfBtn").disabled = cards.length === 0;
 }
+
+function openLargeCard(card) {
+  const modal = $("largeCardModal"), holder = $("largeCardHolder");
+  if (!modal || !holder) { renderPreview(card); window.scrollTo({top:0,behavior:"smooth"}); return; }
+  const previous = currentPreviewCard;
+  renderPreview(card);
+  const large = $("travelCard").cloneNode(true);
+  large.removeAttribute("style");
+  large.classList.add("large-card-enter");
+  large.removeAttribute("data-three-d-ready");
+  large.querySelectorAll("button").forEach(button => button.remove());
+  holder.replaceChildren(large);
+  enableInteractive3DCard(large);
+  if (previous && previous.id !== card.id) renderPreview(previous);
+  modal.hidden = false;
+  document.body.classList.add("large-card-open");
+  $("closeLargeCardBtn").focus();
+}
+function closeLargeCard() {
+  const modal = $("largeCardModal");
+  if (modal) modal.hidden = true;
+  document.body.classList.remove("large-card-open");
+  $("largeCardHolder").replaceChildren();
+}
+function beginEdit(card) {
+  editingCardId = card.id;
+  $("country").value = card.country || "";
+  $("city").value = card.city || "";
+  $("state").value = card.state || "";
+  $("landmark").value = card.landmark || "";
+  $("visitDate").value = card.visitDate ? card.visitDate.split("-").reverse().join("/") : "";
+  $("traveler").value = card.traveler || "";
+  $("memory").value = card.memory || "";
+  $("photoOrientation").value = card.photoOrientation || "16:9";
+  currentPhotoData = card.photo || "";
+  currentLocation = card.location || null;
+  $("photo").value = "";
+  $("photoName").textContent = card.photo ? "Foto atual mantida. Escolha outra apenas se quiser substituí-la." : "Esta carta não possui foto.";
+  $("submitCardBtn").innerHTML = "✦ &nbsp; SALVAR ALTERAÇÕES <span>✓</span>";
+  $("cancelEditBtn").hidden = false;
+  document.querySelector(".form-panel .section-heading h2").textContent = "Editar carta de viagem";
+  document.querySelector(".form-panel .tiny-label").textContent = "EDITANDO CARTA";
+  $("travelForm").classList.add("editing-card");
+  closeLargeCard();
+  window.scrollTo({top:0,behavior:"smooth"});
+  $("country").focus({preventScroll:true});
+}
+function cancelEdit() {
+  editingCardId = null; currentPhotoData = ""; currentLocation = null;
+  $("travelForm").reset(); $("photo").value = ""; $("photoName").textContent = "";
+  $("submitCardBtn").innerHTML = "✦ &nbsp; GERAR CARTA PREMIUM <span>↗</span>";
+  $("cancelEditBtn").hidden = true;
+  document.querySelector(".form-panel .section-heading h2").textContent = "Registrar uma viagem";
+  document.querySelector(".form-panel .tiny-label").textContent = "NOVA CARTA";
+  $("travelForm").classList.remove("editing-card");
+  $("locationStatus").textContent = "Permita o acesso à localização para registrar as coordenadas do local visitado.";
+}
+$("cancelEditBtn").addEventListener("click", cancelEdit);
+$("closeLargeCardBtn").addEventListener("click", closeLargeCard);
+$("largeCardBackdrop").addEventListener("click", closeLargeCard);
+document.addEventListener("keydown", event => { if (event.key === "Escape") closeLargeCard(); });
 
 const ACHIEVEMENT_MILESTONES = [
   { count: 1, icon: "📸", name: "Primeira lembrança" },
@@ -386,7 +459,10 @@ $("photo").addEventListener("change", (event) => {
   const file = event.target.files && event.target.files[0];
   currentPhotoData = ""; $("photoName").textContent = "";
   photoProcessing = false;
-  if (!file) return;
+  if (!file) {
+    if (editingCardId) { const existing = cards.find(item => item.id === editingCardId); currentPhotoData = existing?.photo || ""; }
+    return;
+  }
   if (!file.type.startsWith("image/")) { alert("Selecione um arquivo de imagem."); event.target.value = ""; return; }
   if (file.size > 10 * 1024 * 1024) {
     alert("A foto deve ter no máximo 10 MB.");
@@ -468,32 +544,40 @@ $("visitDate").addEventListener("input", () => {
 $("travelForm").addEventListener("submit", (event) => {
   event.preventDefault();
   if (photoProcessing) { alert("Aguarde o processamento da foto terminar."); return; }
+  const existing = editingCardId ? cards.find(item => item.id === editingCardId) : null;
   const card = {
-    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+    id: existing ? existing.id : (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
     country: safeText($("country").value), city: safeText($("city").value), state: safeText($("state")?.value),
     landmark: safeText($("landmark").value), visitDate: normalizeVisitDate($("visitDate").value),
     traveler: safeText($("traveler").value), memory: safeText($("memory").value),
-    photo: currentPhotoData, photoOrientation: $("photoOrientation").value || "16:9", location: currentLocation
+    photo: currentPhotoData || (existing ? existing.photo : ""), photoOrientation: $("photoOrientation").value || "16:9",
+    location: currentLocation || (existing ? existing.location : null)
   };
   if (!card.country || !card.city || !card.landmark) { alert("Preencha país, cidade e ponto turístico."); return; }
   if (card.visitDate === null) { alert("Digite uma data válida no formato DD/MM/AAAA, por exemplo 15/10/2026."); $("visitDate").focus(); return; }
-  const duplicate = cards.find(c => placeKey(c) === placeKey(card));
-  if (duplicate) {
-    alert(`Este local já está registrado no álbum: ${duplicate.landmark} — ${duplicate.city}, ${duplicate.country}. Não é possível cadastrar o mesmo país, cidade e ponto turístico duas vezes.`);
+  const duplicate = cards.find(c => c.id !== card.id && placeKey(c) === placeKey(card));
+  if (duplicate) { alert(`Este local já está registrado no álbum: ${duplicate.landmark} — ${duplicate.city}, ${duplicate.country}.`); return; }
+  const wasEditing = Boolean(existing);
+  const previousCountryPhotoCount = card.photo ? countPhotosForCountry(card.country) : 0;
+  if (wasEditing) {
+    const index = cards.findIndex(item => item.id === card.id);
+    if (index >= 0) cards[index] = card;
+  } else cards.push(card);
+  if (!saveCards()) {
+    if (wasEditing && existing) { const index = cards.findIndex(item => item.id === card.id); if (index >= 0) cards[index] = existing; }
+    else cards = cards.filter(item => item.id !== card.id);
     return;
   }
-  const previousCountryPhotoCount = card.photo ? countPhotosForCountry(card.country) : 0;
-  cards.push(card);
-  if (!saveCards()) { cards.pop(); return; }
   renderPreview(card); renderAlbum(); renderStatsOnly();
-  if (card.photo) {
+  if (!wasEditing && card.photo) {
     const newCount = previousCountryPhotoCount + 1;
     const unlocked = ACHIEVEMENT_MILESTONES.find(milestone => milestone.count === newCount);
     if (unlocked) celebrateAchievement(unlocked, card.country, newCount);
   }
-  $("travelForm").reset(); currentPhotoData = ""; currentLocation = null; $("photoName").textContent = "";
-  $("locationStatus").textContent = "Permita o acesso à localização para registrar as coordenadas do local visitado.";
-  const mapLink = $("locationMapLink"); if (mapLink) mapLink.remove();
+  cancelEdit();
+  renderPreview(card); renderAlbum();
+  const travelCard = $("travelCard"); travelCard.classList.remove("card-created"); void travelCard.offsetWidth; travelCard.classList.add("card-created");
+  if ($("soundToggle")?.checked && !wasEditing) playAchievementSound();
 });
 $("downloadBtn").addEventListener("click", async () => {
   const text = [
@@ -568,15 +652,25 @@ async function makeTravelCardJpg(card) {
   const portrait = card.photoOrientation === "9:16";
   const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = portrait ? 2180 : 1600;
   const ctx = canvas.getContext("2d");
-  const bg = ctx.createLinearGradient(0,0,1200,canvas.height); bg.addColorStop(0,"#f8edff"); bg.addColorStop(0.55,"#ead0ff"); bg.addColorStop(1,"#d8b2ff");
-  ctx.fillStyle=bg; ctx.fillRect(0,0,canvas.width,canvas.height);
   const H=canvas.height;
-  // Moldura roxa premium com acabamento instantâneo e fundo lavanda suave.
-  ctx.fillStyle="#4b087d"; ctx.globalAlpha=.14; roundedRect(ctx,46,44,1108,H-88,12); ctx.fill(); ctx.globalAlpha=1;
-  ctx.fillStyle="#fffaff"; roundedRect(ctx,36,30,1128,H-60,8); ctx.fill();
-  ctx.strokeStyle="#8e24ff"; ctx.lineWidth=6; ctx.strokeRect(39,33,1122,H-66);
-  ctx.fillStyle="#6410a8"; ctx.font="bold 30px Georgia"; ctx.fillText("ATLAS · DIÁRIO DE VIAGEM",76,88);
-  ctx.fillStyle="#8a52b0"; ctx.font="18px Arial"; ctx.fillText("UMA MEMÓRIA PARA GUARDAR",78,120);
+  // Fundo PREMIUM ROXO FORTE: violeta intenso, luz magenta e moldura roxa metálica.
+  const bg = ctx.createLinearGradient(0,0,1200,H);
+  bg.addColorStop(0,"#26004d"); bg.addColorStop(.22,"#6500c9"); bg.addColorStop(.52,"#3b006f"); bg.addColorStop(.78,"#7800df"); bg.addColorStop(1,"#19002f");
+  ctx.fillStyle=bg; ctx.fillRect(0,0,canvas.width,H);
+  const glow = ctx.createRadialGradient(600,150,10,600,150,900);
+  glow.addColorStop(0,"rgba(255,130,255,.62)"); glow.addColorStop(.35,"rgba(181,45,255,.38)"); glow.addColorStop(1,"rgba(25,0,47,.08)");
+  ctx.fillStyle=glow; ctx.fillRect(0,0,1200,H);
+  // Pontos de luz decorativos fixos para uma aparência de coleção rara.
+  for (let i=0;i<95;i++) { const x=(i*197+53)%1200, y=(i*311+71)%H; const r=(i%4===0)?2.2:1;
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=i%5===0?"rgba(255,225,255,.95)":"rgba(235,190,255,.78)"; ctx.fill(); }
+  // Moldura roxa metálica com brilho neon, filetes internos e profundidade.
+  ctx.save(); ctx.shadowColor="rgba(218,91,255,.95)"; ctx.shadowBlur=34;
+  ctx.strokeStyle="#4b087c"; ctx.lineWidth=22; roundedRect(ctx,34,30,1132,H-60,18); ctx.stroke(); ctx.restore();
+  const purpleMetal=ctx.createLinearGradient(34,30,1166,H-30); purpleMetal.addColorStop(0,"#f8d8ff"); purpleMetal.addColorStop(.18,"#b52cff"); purpleMetal.addColorStop(.38,"#6d00d5"); purpleMetal.addColorStop(.55,"#f0a4ff"); purpleMetal.addColorStop(.76,"#7900d9"); purpleMetal.addColorStop(1,"#e8b4ff");
+  ctx.strokeStyle=purpleMetal; ctx.lineWidth=9; roundedRect(ctx,38,34,1124,H-68,14); ctx.stroke();
+  ctx.strokeStyle="rgba(255,225,255,.88)"; ctx.lineWidth=2; roundedRect(ctx,53,49,1094,H-98,9); ctx.stroke();
+  ctx.fillStyle="#fff0ff"; ctx.font="bold 30px Georgia"; ctx.fillText("ATLAS · DIÁRIO DE VIAGEM",76,88);
+  ctx.fillStyle="#edbaff"; ctx.font="18px Arial"; ctx.fillText("EDIÇÃO DE COLECIONADOR · PREMIUM",78,120);
   // Selo de bandeira dentro da moldura, com fundo branco para destacar o emoji.
   ctx.save();
   ctx.fillStyle = "#ffffff";
@@ -586,25 +680,26 @@ async function makeTravelCardJpg(card) {
   drawCountryFlag(ctx, card.country, 1024, 58, 80, 56);
   ctx.restore(); ctx.textAlign="left"; ctx.textBaseline="alphabetic";
   const px=portrait?305:76, py=150, pw=portrait?590:1048, ph=portrait?1048:590;
-  ctx.fillStyle="#ffffff"; roundedRect(ctx,px-12,py-12,pw+24,ph+24,5); ctx.fill();
-  ctx.strokeStyle="#c15cff"; ctx.lineWidth=4; ctx.strokeRect(px-6,py-6,pw+12,ph+12);
+  ctx.save(); ctx.shadowColor="rgba(0,0,0,.65)"; ctx.shadowBlur=28; ctx.fillStyle="#050510"; roundedRect(ctx,px-13,py-13,pw+26,ph+26,10); ctx.fill(); ctx.restore();
+  const photoPurple=ctx.createLinearGradient(px,py,px+pw,py+ph); photoPurple.addColorStop(0,"#ffe0ff"); photoPurple.addColorStop(.35,"#bd43ff"); photoPurple.addColorStop(.7,"#7100d8"); photoPurple.addColorStop(1,"#f2b5ff");
+  ctx.save(); ctx.shadowColor="rgba(208,75,255,.82)"; ctx.shadowBlur=22; ctx.strokeStyle=photoPurple; ctx.lineWidth=10; roundedRect(ctx,px-7,py-7,pw+14,ph+14,8); ctx.stroke(); ctx.restore();
   ctx.save(); roundedRect(ctx,px,py,pw,ph,10); ctx.clip();
   if(card.photo){
     try { const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=card.photo;});
       const scale=Math.max(pw/img.width,ph/img.height), iw=img.width*scale, ih=img.height*scale; ctx.drawImage(img,(pw-iw)/2+px,(ph-ih)/2+py,iw,ih);
-    } catch { ctx.fillStyle="#d8b2ff"; ctx.fillRect(px,py,pw,ph); }
-  } else { ctx.fillStyle="#eedbff"; ctx.fillRect(px,py,pw,ph); ctx.fillStyle="#8e24ff"; ctx.font="70px Georgia"; ctx.textAlign="center"; ctx.fillText("✧",px+pw/2,py+ph/2); ctx.textAlign="left"; }
+    } catch { ctx.fillStyle="#201333"; ctx.fillRect(px,py,pw,ph); }
+  } else { ctx.fillStyle="#17102d"; ctx.fillRect(px,py,pw,ph); ctx.fillStyle="#f2d48c"; ctx.font="70px Georgia"; ctx.textAlign="center"; ctx.fillText("✧",px+pw/2,py+ph/2); ctx.textAlign="left"; }
   const shade=ctx.createLinearGradient(0,py+ph*.45,0,py+ph); shade.addColorStop(0,"rgba(30,10,50,0)"); shade.addColorStop(1,"rgba(30,10,50,.72)"); ctx.fillStyle=shade; ctx.fillRect(px,py,pw,ph); ctx.restore();
   let yy=py+ph+65;
-  ctx.fillStyle="#8e24ff"; ctx.font="bold 24px Arial"; ctx.fillText(String(card.country).toLocaleUpperCase("pt-BR"),82,yy); yy+=62;
-  ctx.fillStyle="#321047"; ctx.font="bold 58px Georgia"; yy=wrapCanvasText(ctx,card.landmark,82,yy,1030,66,2);
-  ctx.fillStyle="#8a52b0"; ctx.font="30px Arial"; yy=wrapCanvasText(ctx,`${card.city} · ${formattedDate(card.visitDate)}`,82,yy+4,1020,40,2);
-  if(card.traveler){ yy+=20;ctx.fillStyle="#8e24ff";ctx.font="25px Arial";ctx.fillText("VIAJANTE",80,yy);ctx.fillStyle="#321047";ctx.font="30px Arial";ctx.fillText(card.traveler,80,yy+38);yy+=60; }
-  yy+=25; ctx.strokeStyle="#c15cff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(82,yy);ctx.lineTo(1118,yy);ctx.stroke(); yy+=42;
-  ctx.fillStyle="#8e24ff";ctx.font="bold 27px Arial";ctx.fillText("MINHA CARTA DE VIAGEM",80,yy); yy+=42;
-  ctx.fillStyle="#58336e";ctx.font="27px Georgia";yy=wrapCanvasText(ctx,makeLetter(card),80,yy,1030,39,5);
-  if(card.memory){ yy+=12;ctx.fillStyle="#8e24ff";ctx.font="bold 25px Arial";ctx.fillText("LEMBRANÇA ESPECIAL",80,yy);yy+=36;ctx.fillStyle="#58336e";ctx.font="25px Georgia";yy=wrapCanvasText(ctx,card.memory,80,yy,1030,36,Math.max(2,Math.min(5,Math.floor((H-yy-110)/36)))); }
-  const footerY=Math.max(yy+35,H-72); ctx.strokeStyle="#c15cff";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(82,footerY-35);ctx.lineTo(1118,footerY-35);ctx.stroke();ctx.fillStyle="#8a52b0";ctx.font="bold 20px Arial";ctx.textAlign="center";ctx.fillText("GRANDES VIAGENS, GRANDES HISTÓRIAS",600,footerY);ctx.textAlign="left";
+  ctx.fillStyle="#f0b8ff"; ctx.font="bold 24px Arial"; ctx.fillText(String(card.country).toLocaleUpperCase("pt-BR"),82,yy); yy+=62;
+  ctx.fillStyle="#fff4ff"; ctx.font="bold 58px Georgia"; yy=wrapCanvasText(ctx,card.landmark,82,yy,1030,66,2);
+  ctx.fillStyle="#edcaff"; ctx.font="30px Arial"; yy=wrapCanvasText(ctx,`${card.city} · ${formattedDate(card.visitDate)}`,82,yy+4,1020,40,2);
+  if(card.traveler){ yy+=20;ctx.fillStyle="#f0b8ff";ctx.font="25px Arial";ctx.fillText("VIAJANTE",80,yy);ctx.fillStyle="#fff6dc";ctx.font="30px Arial";ctx.fillText(card.traveler,80,yy+38);yy+=60; }
+  yy+=25; ctx.strokeStyle="#d05cff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(82,yy);ctx.lineTo(1118,yy);ctx.stroke(); yy+=42;
+  ctx.fillStyle="#f0b8ff";ctx.font="bold 27px Arial";ctx.fillText("MINHA CARTA DE VIAGEM",80,yy); yy+=42;
+  ctx.fillStyle="#fff0ff";ctx.font="27px Georgia";yy=wrapCanvasText(ctx,makeLetter(card),80,yy,1030,39,5);
+  if(card.memory){ yy+=12;ctx.fillStyle="#f0b8ff";ctx.font="bold 25px Arial";ctx.fillText("LEMBRANÇA ESPECIAL",80,yy);yy+=36;ctx.fillStyle="#fff0ff";ctx.font="25px Georgia";yy=wrapCanvasText(ctx,card.memory,80,yy,1030,36,Math.max(2,Math.min(5,Math.floor((H-yy-110)/36)))); }
+  const footerY=Math.max(yy+35,H-72); ctx.strokeStyle="#d05cff";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(82,footerY-35);ctx.lineTo(1118,footerY-35);ctx.stroke();ctx.fillStyle="#edbaff";ctx.font="bold 20px Arial";ctx.textAlign="center";ctx.fillText("GRANDES VIAGENS, GRANDES HISTÓRIAS",600,footerY);ctx.textAlign="left";
   if (typeof canvas.toDataURL !== "function") throw new Error("Este ambiente não permite exportar imagens.");
   const dataUrl = canvas.toDataURL("image/jpeg", 0.94);
   if (!dataUrl || !dataUrl.startsWith("data:image/jpeg;base64,")) throw new Error("O navegador não conseguiu codificar a carta em JPG.");
@@ -724,3 +819,81 @@ else {
   ["downloadBtn", "jpgBtn", "printBtn", "allPdfBtn"].forEach(id => $(id).disabled = true);
 }
 renderStatsOnly();
+
+
+// Efeito 3D interativo: funciona com mouse e toque, inclusive com um toque simples.
+function enableInteractive3DCard(card) {
+  if (!card || card.dataset.threeDReady === "true") return;
+  card.dataset.threeDReady = "true";
+  let resetTimer = null;
+  let dragging = false;
+  let startX = 0;
+  let startY = 0;
+  const isLargeCard = !!card.closest(".large-card-holder");
+
+  const setTilt = (x, y, strong = false) => {
+    const maxX = strong ? 10 : 16;
+    const maxY = strong ? 12 : 20;
+    card.style.transform = `perspective(1100px) rotateX(${(0.5-y)*maxX}deg) rotateY(${(x-0.5)*maxY}deg) translateY(-4px) scale(1.018)`;
+    card.classList.add("card-3d-touch");
+  };
+  const tiltFromPointer = (event) => {
+    const rect = card.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(rect.width, 1)));
+    const y = Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(rect.height, 1)));
+    setTilt(x, y);
+  };
+  const resetTilt = () => {
+    card.style.transform = "";
+    card.classList.remove("card-3d-touch");
+    dragging = false;
+  };
+  const scheduleReset = (delay = 1500) => {
+    clearTimeout(resetTimer);
+    resetTimer = setTimeout(resetTilt, delay);
+  };
+
+  card.addEventListener("pointerdown", (event) => {
+    if (event.target.closest("button, a, input, label")) return;
+    clearTimeout(resetTimer);
+    dragging = true;
+    startX = event.clientX;
+    startY = event.clientY;
+    card.classList.add("card-3d-touch");
+    tiltFromPointer(event);
+    // Capture keeps pointer movement working consistently on touchscreens.
+    try { card.setPointerCapture(event.pointerId); } catch (_) {}
+  });
+  card.addEventListener("pointermove", (event) => {
+    if (dragging) {
+      tiltFromPointer(event);
+      return;
+    }
+    if (event.pointerType === "mouse" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const rect = card.getBoundingClientRect();
+      if (event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom) tiltFromPointer(event);
+      else { card.style.transform = ""; card.classList.remove("card-3d-touch"); }
+    }
+  });
+  const release = (event) => {
+    if (!dragging) return;
+    // If the finger barely moved, keep a visible angled pose after a tap.
+    const moved = Math.abs((event?.clientX ?? startX) - startX) + Math.abs((event?.clientY ?? startY) - startY);
+    dragging = false;
+    if (moved < 12 && event?.pointerType !== "mouse") setTilt(0.72, 0.32, true);
+    scheduleReset(1700);
+  };
+  card.addEventListener("pointerup", release);
+  card.addEventListener("pointercancel", release);
+  card.addEventListener("lostpointercapture", () => { if (dragging) scheduleReset(500); });
+  card.addEventListener("pointerleave", () => {
+    if (!dragging) scheduleReset(isLargeCard ? 900 : 300);
+  });
+  card.addEventListener("click", (event) => {
+    if (event.target.closest("button, a, input, label")) return;
+    // A visible 3D tilt is applied on tap/click, even without a drag.
+    if (!card.classList.contains("card-3d-touch")) setTilt(0.72, 0.32, true);
+    scheduleReset(1700);
+  });
+}
+enableInteractive3DCard(document.getElementById("travelCard"));

@@ -9,7 +9,7 @@
   <link rel="icon" href="assets/atlas-globo-aviao.ico" sizes="any">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=album-3d-touch-fix-20261016">
 </head>
 <body>
   <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
@@ -25,6 +25,7 @@
       <div class="eyebrow"><span></span> CADA DESTINO, UMA CONQUISTA</div>
       <h1>O mundo é seu.<br><em>Guarde cada história.</em></h1>
       <p>Crie cartas colecionáveis premium dos pontos turísticos que você visitou, organize sua coleção e exporte seu álbum completo sem limites artificiais de quantidade ou downloads.</p>
+      <div class="fun-tools"><span>🎉 Cada carta é uma nova conquista!</span><label class="sound-toggle"><input id="soundToggle" type="checkbox" checked> Efeitos sonoros</label></div>
       <div class="stats">
         <div><strong id="countryCount">0</strong><span>PAÍSES REGISTRADOS</span></div>
         <div><strong id="cardCount">0</strong><span>CARTAS NO ÁLBUM</span></div>
@@ -59,7 +60,8 @@
             <button id="locationBtn" class="secondary-button" type="button">📍 Verificar minha localização</button>
             <p id="locationStatus" class="photo-name" aria-live="polite">Permita o acesso à localização para registrar as coordenadas do local visitado.</p>
           </div>
-          <button class="primary-button" type="submit">✦ &nbsp; GERAR CARTA PREMIUM <span>↗</span></button>
+          <button id="submitCardBtn" class="primary-button" type="submit">✦ &nbsp; GERAR CARTA PREMIUM <span>↗</span></button>
+          <button id="cancelEditBtn" class="secondary-button" type="button" hidden>Cancelar edição</button>
         </form>
         <p class="privacy-note">🔒 Seus registros ficam salvos localmente neste computador. A edição completa permite cartas e exportações ilimitadas.</p>
       </div>
@@ -109,6 +111,15 @@
     </section>
     <footer><span>ATLAS PREMIUM</span><span>FEITO PARA GUARDAR O EXTRAORDINÁRIO.</span></footer>
   </main>
+  <div id="largeCardModal" class="large-card-modal" role="dialog" aria-modal="true" aria-label="Carta de viagem ampliada" hidden>
+    <button id="largeCardBackdrop" class="large-card-backdrop" type="button" aria-label="Fechar carta ampliada"></button>
+    <div class="large-card-dialog">
+      <button id="closeLargeCardBtn" class="large-card-close" type="button" aria-label="Fechar carta">×</button>
+      <p class="large-card-kicker">✦ SUA CARTA DE VIAGEM ✦</p>
+      <div id="largeCardHolder" class="large-card-holder"></div>
+      <p class="large-card-hint">Toque e mova a carta para explorar o efeito 3D.</p>
+    </div>
+  </div>
   <div id="achievementCelebration" class="achievement-celebration" role="dialog" aria-modal="true" aria-labelledby="celebrationTitle" aria-describedby="celebrationDescription" hidden>
     <div class="celebration-backdrop" data-close-celebration="true"></div>
     <div class="celebration-panel">
@@ -124,7 +135,7 @@
     </div>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.1/jspdf.umd.min.js"></script>
-  <script defer src="script.js?v=download-fix-20261015"></script>
+  <script defer src="script.js?v=album-3d-touch-fix-20261016"></script>
   <script>if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) { window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(err => console.warn("Service worker não registrado:", err))); }</script>
 </body>
 </html>

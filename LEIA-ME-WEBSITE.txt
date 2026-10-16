@@ -40,3 +40,61 @@ sw.js                       Cache básico para acesso offline
 assets/                     Ícones do Atlas Premium
 
 Esta é uma versão estática para hospedagem. Para contas de usuário, sincronização na nuvem, recuperação de dados ou coleção compartilhada entre dispositivos, será necessário adicionar backend e banco de dados.
+
+
+NOVIDADES DESTA VERSÃO (16/10/2026)
+- Efeito sonoro musical ao criar uma nova carta, gerado pelo próprio navegador (sem arquivo de áudio).
+- Animação visual ao revelar uma carta recém-criada.
+- Botão EDITAR em cada carta do álbum: permite alterar país, cidade, estado, ponto turístico, data, nome, lembrança e formato.
+- Ao editar, a foto existente é mantida se você não escolher uma nova.
+- Botão para cancelar a edição e alternância para ativar/desativar efeitos sonoros.
+- Cartas continuam guardadas localmente no navegador deste dispositivo.
+
+Para atualizar a instalação PWA, publique os arquivos atualizados e recarregue o site. Se continuar aparecendo a versão antiga, feche e abra o navegador ou limpe os dados/cache do site. A pasta assets deve ser mantida caso já exista na sua instalação original.
+
+
+NOVIDADES VISUAIS (16/10/2026)
+- Ao baixar a carta em JPG, agora ela recebe um fundo premium azul-noite com degradê violeta e pontos de luz.
+- Moldura dupla dourada, detalhes luminosos, acabamento de colecionador e maior contraste nos textos.
+- A foto ganha uma moldura dourada para combinar com o visual de luxo; bandeira e informações da viagem continuam incluídas.
+- Cache PWA atualizado para carregar a nova versão.
+
+
+ATUALIZAÇÃO — CARTA COM EFEITO 3D
+- Toque ou clique na carta para ativar o efeito 3D.
+- Arraste o dedo ou o mouse sobre a carta para inclinar a perspectiva em tempo real.
+- O movimento retorna suavemente ao normal após soltar.
+- O cache do site foi atualizado para carregar os arquivos novos.
+
+
+CORREÇÃO PREMIUM 3D — 16/10/2026
+- A prévia da carta usa fundo escuro premium, filetes dourados e camadas com profundidade.
+- Ao tocar/clicar e ao mover o mouse ou dedo, a carta inclina em 3D; o álbum também tem interação 3D.
+- A exportação JPG foi refeita com fundo azul-noite/violeta, moldura metálica dourada, pontos de luz e tipografia clara.
+- Service worker corrigido: imagens/ícones opcionais ausentes não bloqueiam mais a instalação do cache.
+- Versões de CSS/JS e cache atualizadas para evitar que o navegador reutilize os arquivos antigos.
+
+IMPORTANTE: este pacote contém os arquivos de código. Se sua instalação original tiver uma pasta assets com ícones/imagens, mantenha-a ao substituir os arquivos. Após publicar em HTTPS, faça recarga forçada (Ctrl+F5) ou limpe os dados do site/cache do aplicativo.
+
+
+ATUALIZAÇÃO 16/10/2026 — ÁLBUM EM MINIATURAS E EDIÇÃO
+- As cartas aparecem como miniaturas com foto, bandeira e detalhes premium no álbum.
+- VER CARTA abre uma janela ampliada com efeito 3D por toque, mouse ou arraste.
+- EDITAR permite alterar os dados, manter a foto existente ou selecionar uma nova e salvar sem duplicar a carta.
+- A janela da carta pode ser fechada pelo X, tocando fora dela ou pressionando Esc.
+- Após substituir os arquivos, mantenha a pasta assets e force a atualização com Ctrl+F5.
+
+
+CORREÇÃO DO EFEITO 3D (16/10/2026)
+- Refeito o controle de inclinação 3D para mouse e telas de toque.
+- Um toque simples agora deixa a carta inclinada por alguns instantes; arrastar a carta muda a inclinação em tempo real.
+- Na janela VER CARTA, o gesto usa touch-action: none para evitar que o navegador confunda o arraste com rolagem da página.
+- Atualizado o nome do cache e os parâmetros de versão de CSS/JavaScript para forçar a atualização.
+- JavaScript e service worker verificados com node --check. A interação ainda deve ser confirmada no navegador/dispositivo final.
+
+
+ATUALIZAÇÃO V10 — FUNDO ROXO FORTE
+- A carta JPG exportada agora usa fundo violeta intenso com brilho magenta.
+- A moldura externa e a moldura da foto foram alteradas para roxo metálico luminoso.
+- A carta exibida na prévia/modal também recebe fundo roxo premium.
+- Cache atualizado para forçar o navegador a buscar os novos arquivos.

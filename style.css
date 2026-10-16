@@ -160,3 +160,107 @@ body.celebration-open{overflow:hidden}
 .art-placeholder small{font-weight:800;color:#fff!important;text-shadow:0 2px 8px #000;}
 .state-achievement-heading{margin-top:28px;}
 .state-achievement .achievement-badge.unlocked{border-color:#c9a96e;}
+
+/* Novos recursos: edição, som e animação de carta */
+.fun-tools{display:flex;justify-content:center;align-items:center;gap:18px;flex-wrap:wrap;margin:20px auto 0;color:#d9c4f3;font-size:11px}
+.sound-toggle{display:inline-flex;flex-direction:row;align-items:center;gap:7px;color:#d9c4f3;font-size:10px;cursor:pointer}
+.sound-toggle input{accent-color:#c15cff}
+.editing-card{outline:1px solid #d05cff;outline-offset:5px;border-radius:10px}
+#cancelEditBtn{width:100%;margin-top:2px}
+.card-created{animation:cardPop .85s cubic-bezier(.2,.8,.2,1)}
+@keyframes cardPop{0%{transform:scale(.88) rotate(-2deg);filter:brightness(1)}45%{transform:scale(1.035) rotate(1deg);filter:brightness(1.3);box-shadow:0 0 45px #c15cffaa}100%{transform:scale(1) rotate(0);filter:brightness(1)}}
+.album-actions button{min-width:0}
+@media(prefers-reduced-motion:reduce){.card-created{animation:none}}
+
+
+/* Carta colecionável com movimento 3D ao tocar, clicar ou arrastar. */
+#travelCard { transform-style: preserve-3d; transform-origin: center; will-change: transform; transition: transform .22s cubic-bezier(.2,.75,.25,1), box-shadow .25s ease; touch-action: pan-y; cursor: grab; }
+#travelCard:active { cursor: grabbing; }
+#travelCard.card-3d-touch { box-shadow: 0 32px 70px rgba(142,36,255,.42), 0 0 0 1px rgba(240,164,255,.55), inset 0 0 0 2px #fff !important; }
+#travelCard.card-3d-touch .card-art { transform: translateZ(12px); }
+#travelCard.card-3d-touch .card-details { transform: translateZ(5px); }
+#travelCard .card-art, #travelCard .card-details { transition: transform .22s ease; }
+@media (prefers-reduced-motion: reduce) { #travelCard, #travelCard .card-art, #travelCard .card-details { transition: none !important; } }
+
+
+/* FIX DEFINITIVO: identidade premium escura, dourada e 3D com interação por toque. */
+#travelCard.travel-card {
+  position: relative !important; isolation: isolate; overflow: hidden;
+  background: linear-gradient(145deg,#0b0a18 0%,#1b1030 52%,#0b0d1b 100%) !important;
+  color: #f7edcf !important; border: 3px solid #d7b66d !important;
+  border-radius: 14px !important;
+  box-shadow: 0 28px 65px rgba(0,0,0,.55), 0 0 0 1px rgba(255,229,163,.45), inset 0 0 0 2px rgba(255,239,190,.12) !important;
+  transform-style: preserve-3d !important; transform-origin: center center;
+  will-change: transform; transition: transform .18s ease-out, box-shadow .25s ease;
+  touch-action: pan-y; cursor: grab;
+}
+#travelCard .card-topline,#travelCard .card-bottom { color:#d7bd82 !important; border-color:rgba(215,182,109,.55) !important; }
+#travelCard .card-art { border:3px solid #cda85d !important; box-shadow:inset 0 0 0 1px rgba(255,240,190,.45),0 12px 26px #0008; }
+#travelCard .card-details { background:linear-gradient(145deg,#171126,#0c0c1b) !important; color:#f7edcf !important; }
+#travelCard .detail-label,#travelCard .detail-label span,#travelCard .card-footer small { color:#d9b96f !important; }
+#travelCard .card-details p { color:#eee5f8 !important; }
+#travelCard .card-footer { border-color:rgba(215,182,109,.45) !important; }
+#travelCard .card-footer b { color:#fff3d1 !important; }
+#travelCard .stamp { color:#f1d58d !important; border-color:#d7b66d !important; }
+#travelCard.card-3d-touch { box-shadow:0 35px 85px rgba(110,51,180,.48),0 0 28px rgba(222,184,93,.32),inset 0 0 0 2px rgba(255,239,190,.24) !important; }
+#travelCard.card-3d-touch .card-art { transform:translateZ(16px); }
+#travelCard.card-3d-touch .card-details { transform:translateZ(7px); }
+.album-item { transform-style:preserve-3d; transition:transform .2s ease,box-shadow .25s ease; will-change:transform; touch-action:pan-y; cursor:grab; }
+.album-item.card-3d-touch { box-shadow:0 24px 55px rgba(142,36,255,.32),0 0 0 1px rgba(215,182,109,.55); }
+.album-item.card-3d-touch .album-thumb { transform:translateZ(12px); }
+.album-thumb { transition:transform .2s ease; }
+@media(prefers-reduced-motion:reduce) { #travelCard,.album-item,#travelCard .card-art,#travelCard .card-details,.album-thumb { transition:none !important; } }
+@media print { #travelCard.travel-card { background:#111022 !important; color:#f7edcf !important; print-color-adjust:exact; -webkit-print-color-adjust:exact; } }
+
+
+/* Álbum em miniaturas premium, carta ampliada e edição real de cartas existentes */
+.album-thumb{display:block;width:100%;height:156px;padding:0;border:0;border-bottom:1px solid rgba(215,182,109,.65);text-align:left;color:#fff;cursor:pointer;position:relative;background:linear-gradient(145deg,#26133d,#090b18);isolation:isolate}
+.album-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.72;transition:transform .45s ease,opacity .3s ease}
+.album-thumb:hover img{transform:scale(1.07);opacity:.86}
+.album-thumb:before{content:"";position:absolute;inset:5px;border:1px solid rgba(223,190,110,.8);z-index:2;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.mini-card-shade{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:4px;padding:17px 14px;background:linear-gradient(180deg,rgba(8,7,19,.12),rgba(8,7,19,.28) 35%,rgba(8,7,19,.96) 100%);text-shadow:0 2px 5px #000}
+.mini-card-flag{position:absolute;top:15px;right:14px;font-size:23px;filter:drop-shadow(0 2px 4px #000)}
+.mini-card-shade small{font-size:8px;letter-spacing:1.7px;color:#e8cb85;font-weight:800}
+.mini-card-shade b{font:500 19px 'Playfair Display',serif;line-height:1.1;color:#fff4d8;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mini-card-shade em{font-style:normal;font-size:10px;color:#e0d6ed}
+.album-actions{flex-wrap:wrap}.album-actions button{min-height:31px}.album-actions button:first-child{border-color:rgba(215,182,109,.42);color:#f1d58d}
+.large-card-modal[hidden]{display:none!important}.large-card-modal{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:24px;overflow-y:auto}
+.large-card-backdrop{position:fixed;inset:0;border:0;background:rgba(5,3,12,.88);backdrop-filter:blur(12px);cursor:pointer}
+.large-card-dialog{position:relative;z-index:1;width:min(100%,660px);max-height:calc(100dvh - 40px);overflow:auto;padding:24px clamp(14px,4vw,34px) 22px;border:1px solid rgba(215,182,109,.55);border-radius:22px;background:radial-gradient(ellipse at 50% 0%,rgba(142,36,255,.2),transparent 45%),linear-gradient(145deg,#171026,#080811);box-shadow:0 30px 100px #000b,0 0 50px rgba(142,36,255,.16)}
+.large-card-close{position:sticky;top:0;float:right;z-index:4;width:38px;height:38px;border:1px solid rgba(215,182,109,.55);border-radius:50%;background:#171026;color:#f4d98e;font-size:26px;cursor:pointer}
+.large-card-kicker{text-align:center;color:#d9b96f;font-size:10px;letter-spacing:2.4px;margin:10px 35px 20px}
+.large-card-holder{clear:both;perspective:1200px;padding:10px 0 20px}
+.large-card-holder #travelCard{width:min(100%,480px);max-width:480px;margin:0 auto;transform-origin:center;cursor:grab}
+.large-card-holder #travelCard .card-art{height:clamp(220px,38vh,340px)}
+.large-card-hint{text-align:center;color:#c8b4df;font-size:11px;margin:0 0 5px}
+.large-card-enter{animation:largeCardAppear .55s cubic-bezier(.2,.85,.25,1) both}
+@keyframes largeCardAppear{0%{opacity:0;transform:translateY(24px) rotateX(12deg) scale(.92)}100%{opacity:1;transform:translateY(0) rotateX(0) scale(1)}}
+body.large-card-open{overflow:hidden}
+@media(max-width:520px){.album-thumb{height:125px}.mini-card-shade{padding:13px 10px}.mini-card-shade b{font-size:16px}.large-card-modal{padding:8px}.large-card-dialog{padding:14px 10px 18px;border-radius:16px;max-height:calc(100dvh - 16px)}.large-card-kicker{font-size:9px;margin-bottom:12px}.large-card-holder{padding:5px 0 12px}.large-card-holder #travelCard{padding:10px}.large-card-holder #travelCard .card-art{height:clamp(200px,32vh,285px)}.large-card-holder #travelCard .card-details p{font-size:12px;min-height:0}.album-actions button{font-size:8px;padding:7px 4px}}
+@media(prefers-reduced-motion:reduce){.large-card-enter{animation:none}.album-thumb img{transition:none}}
+
+
+/* Correção reforçada do 3D: a carta grande aceita gesto direto sem o navegador
+   interpretar o arraste como rolagem da página. O álbum continua rolável. */
+.large-card-holder { perspective: 1400px; perspective-origin: 50% 45%; }
+.large-card-holder #travelCard { touch-action: none !important; transform-style: preserve-3d !important; backface-visibility: visible; }
+#travelCard.card-3d-touch { filter: saturate(1.08); }
+#travelCard.card-3d-touch .card-topline,
+#travelCard.card-3d-touch .card-bottom,
+#travelCard.card-3d-touch .card-footer,
+#travelCard.card-3d-touch .card-art { transform-style: preserve-3d; }
+.album-item.card-3d-touch { transform: perspective(900px) rotateX(3deg) rotateY(-4deg) translateY(-3px); }
+@media (hover:none) and (pointer:coarse) {
+  .large-card-holder #travelCard { touch-action: none !important; }
+}
+
+
+/* Fundo e moldura roxo forte para a carta exibida e a experiência premium. */
+#travelCard.travel-card{background:linear-gradient(145deg,#3b006f 0%,#7900df 42%,#260047 100%)!important;color:#fff2ff!important;border:5px solid #d65cff!important;box-shadow:0 0 0 2px #4a087a,0 0 26px rgba(204,67,255,.75),0 24px 60px rgba(0,0,0,.6)!important}
+#travelCard .card-topline,#travelCard .card-bottom{color:#f0baff!important;border-color:rgba(240,186,255,.6)!important}
+#travelCard .card-art{border:4px solid #e7a0ff!important;box-shadow:0 0 0 2px #7800d9,inset 0 0 0 2px rgba(255,255,255,.28),0 12px 30px rgba(0,0,0,.48)!important}
+#travelCard .card-details{background:linear-gradient(145deg,#5b009e,#280044)!important;color:#fff2ff!important}
+#travelCard .detail-label,#travelCard .detail-label span,#travelCard .card-footer small{color:#f0baff!important}
+#travelCard .card-details p,#travelCard .card-footer b{color:#fff2ff!important}
+#travelCard .card-footer{border-color:rgba(235,169,255,.5)!important}
+#travelCard .stamp{color:#ffdfff!important;border-color:#e7a0ff!important}
