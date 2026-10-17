@@ -264,3 +264,118 @@ body.large-card-open{overflow:hidden}
 #travelCard .card-details p,#travelCard .card-footer b{color:#fff2ff!important}
 #travelCard .card-footer{border-color:rgba(235,169,255,.5)!important}
 #travelCard .stamp{color:#ffdfff!important;border-color:#e7a0ff!important}
+
+/* Cartas 9:16: miniatura vertical no álbum e visualização ampliada com 3D. */
+.album-thumb-portrait {
+  height: auto !important;
+  aspect-ratio: 9 / 16;
+  min-height: 0;
+  max-height: none;
+  width: 100%;
+  display: block;
+}
+.album-thumb-portrait img { object-fit: cover; width: 100%; height: 100%; }
+.album-item-portrait .album-thumb:before { inset: 5px; border-width: 1px; }
+.travel-card.travel-card-portrait {
+  width: min(100%, 360px);
+  max-width: 360px;
+  transform: none;
+}
+.travel-card.travel-card-portrait .card-art.photo-portrait {
+  width: 100% !important;
+  height: clamp(260px, 43vh, 430px) !important;
+  margin-inline: auto;
+}
+/* A visualização abre em painel quase de tela cheia, sem perder o arraste 3D. */
+.large-card-modal { padding: 8px !important; }
+.large-card-dialog {
+  width: min(100%, 900px) !important;
+  max-height: calc(100dvh - 16px) !important;
+  padding: clamp(10px, 2vh, 20px) clamp(10px, 2vw, 24px) 12px !important;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+.large-card-kicker { flex: 0 0 auto; margin: 4px 42px 8px !important; }
+.large-card-holder {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0 8px !important;
+  perspective: 1600px;
+}
+.large-card-holder #travelCard {
+  flex: 0 0 auto;
+  max-height: calc(100dvh - 118px);
+  overflow-y: auto;
+  touch-action: none !important;
+  transform-style: preserve-3d !important;
+  cursor: grab;
+}
+.large-card-holder #travelCard.travel-card-portrait {
+  width: min(88vw, 420px, calc((100dvh - 140px) * 0.5625)) !important;
+  max-width: min(88vw, 420px, calc((100dvh - 140px) * 0.5625)) !important;
+}
+.large-card-holder #travelCard.travel-card-portrait .card-art.photo-portrait {
+  height: clamp(190px, 34vh, 360px) !important;
+  width: 100% !important;
+}
+.large-card-hint { flex: 0 0 auto; margin: 2px 0 0 !important; }
+#travelCard.card-3d-touch { box-shadow: 0 30px 75px rgba(142,36,255,.55), 0 0 0 2px rgba(240,164,255,.65), inset 0 0 0 2px #fff !important; }
+#travelCard.card-3d-touch .card-art { transform: translateZ(18px); }
+#travelCard.card-3d-touch .card-details { transform: translateZ(8px); }
+@media (max-width: 520px) {
+  .album-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .large-card-dialog { max-height: calc(100dvh - 12px) !important; padding: 8px 8px 10px !important; }
+  .large-card-holder #travelCard.travel-card-portrait { width: min(88vw, calc((100dvh - 118px) * 0.5625)) !important; max-width: min(88vw, calc((100dvh - 118px) * 0.5625)) !important; }
+  .large-card-holder #travelCard.travel-card-portrait .card-art.photo-portrait { height: clamp(170px, 29vh, 240px) !important; }
+  .travel-card.travel-card-portrait .card-details { padding: 10px 9px 8px; }
+  .travel-card.travel-card-portrait .card-details p { margin: 6px 0 9px; min-height: 0; font-size: 12px; }
+  .travel-card.travel-card-portrait .stamp { width: 42px; height: 42px; }
+}
+
+
+/* Molduras personalizadas por conquista: cores e ornamentos sincronizados com a celebração. */
+.achievement-badge{position:relative;isolation:isolate;overflow:hidden;border:1px solid hsl(var(--frame-hue,270) 55% 60% / .8);background:linear-gradient(145deg,hsl(var(--frame-hue,270) 70% 25% / .3),rgba(15,5,29,.75));transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
+.achievement-badge:before{content:"";position:absolute;inset:4px;border:1px solid hsl(var(--frame-hue,270) 85% 80% / .25);border-radius:7px;pointer-events:none;z-index:-1}
+.achievement-badge:after{content:"✦";position:absolute;right:6px;top:3px;font-size:10px;color:hsl(var(--frame-hue,270) 100% 82% / .8);pointer-events:none}
+.achievement-badge.unlocked{border-color:hsl(var(--frame-hue,270) 95% 72%);background:radial-gradient(circle at 50% 0%,hsl(var(--frame-hue,270) 95% 65% / .25),transparent 65%),linear-gradient(145deg,hsl(var(--frame-hue,270) 72% 22% / .65),rgba(18,8,31,.94));box-shadow:inset 0 0 0 1px hsl(var(--frame-hue,270) 100% 85% / .15),0 0 16px hsl(var(--frame-hue,270) 100% 60% / .18)}
+.achievement-badge.unlocked .achievement-icon{border-color:hsl(var(--frame-hue,270) 100% 78%);background:radial-gradient(circle,hsl(var(--frame-hue,270) 100% 65% / .38),hsl(var(--frame-hue,270) 75% 25% / .6));box-shadow:0 0 15px hsl(var(--frame-hue,270) 100% 65% / .35)}
+.achievement-badge[data-frame="starter"]{border-radius:7px}
+.achievement-badge[data-frame="bronze"]{border-width:2px;border-radius:10px}
+.achievement-badge[data-frame="silver"]{border-width:2px;border-style:double;border-radius:9px}
+.achievement-badge[data-frame="gold"]{border-width:2px;border-radius:13px 5px 13px 5px}
+.achievement-badge[data-frame="royal"]{border-width:2px;border-style:double;border-radius:15px;box-shadow:inset 0 0 0 2px hsl(var(--frame-hue) 90% 75% / .12),0 0 14px hsl(var(--frame-hue) 90% 60% / .2)}
+.achievement-badge[data-frame="diamond"]{border-width:2px;border-radius:4px;clip-path:polygon(6% 0,94% 0,100% 8%,100% 92%,94% 100%,6% 100%,0 92%,0 8%)}
+.achievement-badge[data-frame="legendary"]{border:2px solid hsl(var(--frame-hue) 100% 75%);border-radius:16px 5px 16px 5px;box-shadow:inset 0 0 0 3px hsl(var(--frame-hue) 100% 78% / .15),0 0 22px hsl(var(--frame-hue) 100% 65% / .35);animation:achievementLegendaryGlow 2.2s ease-in-out infinite}
+.achievement-badge.unlocked:hover{transform:translateY(-3px) scale(1.025)}
+.celebration-panel{--frame-hue:270;--frame-color:hsl(var(--frame-hue) 95% 75%);border:2px solid var(--frame-color);background:radial-gradient(ellipse at 50% 0%,hsl(var(--frame-hue) 90% 58% / .32),transparent 58%),linear-gradient(145deg,hsl(var(--frame-hue) 52% 18%),#10081f 72%);box-shadow:0 0 0 2px hsl(var(--frame-hue) 90% 72% / .16),0 0 35px hsl(var(--frame-hue) 100% 60% / .3),0 25px 100px rgba(35,10,60,.45)}
+.celebration-panel:before{border:2px double hsl(var(--frame-hue) 100% 82% / .45);inset:7px;border-radius:17px}
+.celebration-icon{border:2px solid hsl(var(--frame-hue) 100% 80%);background:radial-gradient(circle,hsl(var(--frame-hue) 100% 65% / .45),hsl(var(--frame-hue) 80% 22% / .45));box-shadow:0 0 0 7px hsl(var(--frame-hue) 100% 70% / .1),0 0 38px hsl(var(--frame-hue) 100% 65% / .5)}
+.celebration-panel[data-frame="bronze"]{border-radius:14px}
+.celebration-panel[data-frame="silver"]{border-style:double;border-width:4px}
+.celebration-panel[data-frame="gold"]{border-radius:30px 8px 30px 8px}
+.celebration-panel[data-frame="royal"]{border-width:4px;border-style:double;border-radius:28px}
+.celebration-panel[data-frame="diamond"]{border-radius:8px;box-shadow:inset 0 0 0 5px hsl(var(--frame-hue) 100% 80% / .12),0 0 45px hsl(var(--frame-hue) 100% 65% / .4)}
+.celebration-panel[data-frame="legendary"]{border-width:4px;border-style:double;border-radius:30px 8px 30px 8px;animation:achievementLegendaryGlow 2.2s ease-in-out infinite}
+@keyframes achievementLegendaryGlow{0%,100%{filter:drop-shadow(0 0 3px hsl(var(--frame-hue) 100% 65% / .25))}50%{filter:drop-shadow(0 0 12px hsl(var(--frame-hue) 100% 65% / .65))}}
+@media(prefers-reduced-motion:reduce){.achievement-badge[data-frame="legendary"],.celebration-panel[data-frame="legendary"]{animation:none}}
+
+
+/* Miniaturas compactas: mais cartas visíveis sem perder a moldura premium. */
+.album-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.album-thumb, .album-thumb-portrait { height: 112px !important; min-height: 0 !important; max-height: 112px !important; aspect-ratio: auto !important; }
+.mini-card-shade { padding: 9px 8px; gap: 3px; }
+.mini-card-flag { top: 8px; right: 8px; font-size: 17px; }
+.mini-card-shade small { font-size: 7px; letter-spacing: 1px; }
+.mini-card-shade b { font-size: 14px; }
+.mini-card-shade em { font-size: 8px; }
+.album-info { padding: 9px; }
+.album-info h3 { font-size: 14px; }
+.album-actions { gap: 5px; }
+.album-actions button { font-size: 8px; padding: 6px 4px; }
+@media(max-width:850px) { .album-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media(max-width:520px) { .album-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; } .album-thumb, .album-thumb-portrait { height: 96px !important; max-height: 96px !important; } .mini-card-shade b { font-size: 12px; } .album-info h3 { font-size: 13px; } }

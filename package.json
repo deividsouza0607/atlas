@@ -1,0 +1,48 @@
+{
+  "name": "atlas-premium",
+  "version": "1.0.0",
+  "description": "Atlas Premium - álbum e cartas de viagens",
+  "author": "Walks Drone View",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "br.com.walksdrone.atlaspremium",
+    "productName": "Atlas Premium",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main.js",
+      "index.html",
+      "script.js",
+      "style.css",
+      "sw.js",
+      "manifest.webmanifest",
+      "assets/**/*",
+      "LEIA-ME-WEBSITE.txt",
+      "package.json"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "assets/atlas-globo-aviao.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Atlas Premium",
+      "installerIcon": "assets/atlas-globo-aviao.ico",
+      "uninstallerIcon": "assets/atlas-globo-aviao.ico"
+    }
+  }
+}

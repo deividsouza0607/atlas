@@ -98,3 +98,35 @@ ATUALIZAÇÃO V10 — FUNDO ROXO FORTE
 - A moldura externa e a moldura da foto foram alteradas para roxo metálico luminoso.
 - A carta exibida na prévia/modal também recebe fundo roxo premium.
 - Cache atualizado para forçar o navegador a buscar os novos arquivos.
+
+
+ATUALIZAÇÃO — MAIS FORMAS DE CONQUISTAR
+- Novos desafios: cidades diferentes, pontos turísticos, países, estados brasileiros, viagens com GPS e meses diferentes de visita.
+- Cada desafio possui níveis progressivos, insígnias e barra de progresso.
+- Para GPS, permita a localização no momento do registro da viagem. Para o desafio de meses, preencha a data da visita.
+- As conquistas são calculadas a partir das cartas com foto salvas no álbum.
+
+
+CORREÇÃO 3D DA CARTA — 16/10/2026
+- Ao abrir uma carta em tamanho grande, arraste o mouse ou o dedo sobre a carta para girá-la em 3D.
+- O movimento fica visível por alguns instantes depois de soltar.
+- A versão do CSS/JavaScript e o cache offline foram atualizados para evitar carregar arquivos antigos.
+- Se o site já estava instalado, feche e abra novamente; no navegador, faça uma atualização forçada (Ctrl+F5).
+
+
+ATUALIZAÇÃO — ANIMAÇÃO DE TODAS AS CONQUISTAS
+- Cada nova insígnia desbloqueada ao salvar uma carta com foto exibe sua própria celebração animada, com ícone, confetes e efeito sonoro.
+- A verificação cobre marcos por país, por estado brasileiro e todos os desafios de exploração (cidades, pontos turísticos, países, estados, GPS e meses diferentes).
+- Se uma carta desbloquear várias insígnias ao mesmo tempo, as animações aparecem uma após a outra; nenhuma celebração é sobreposta.
+- As animações são acionadas somente para conquistas recém-desbloqueadas ao registrar uma nova carta, e não ao abrir/recarregar o programa.
+- Cache do site atualizado para v13 para solicitar os arquivos novos.
+
+
+ATUALIZAÇÃO — MOLDURAS INDIVIDUAIS DAS CONQUISTAS
+Cada insígnia recebe identidade visual própria com cor e estilo de moldura de acordo com o nível e a categoria (país, estado ou exploração). A janela de celebração usa a mesma identidade visual da conquista desbloqueada. Cache atualizado para v15.
+
+
+ATUALIZAÇÃO 17/10/2026 — MINIATURAS E ÁLBUM PDF
+- Miniaturas do álbum reduzidas para exibir mais cartas na tela. A carta continua abrindo em tamanho ampliado ao clicar.
+- O PDF agora inclui capa premium e páginas de galeria com miniaturas, país, destino, cidade e data.
+- Nome do arquivo exportado: Atlas_Premium_Album_Miniaturas.pdf.

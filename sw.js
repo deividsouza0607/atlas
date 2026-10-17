@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atlas-premium-web-v10-purple-premium';
+const CACHE_NAME = 'atlas-premium-web-v16-compact-thumbnails-pdf-gallery';
 const CORE = ['./', './index.html', './style.css', './script.js', './manifest.webmanifest'];
 const OPTIONAL = ['./assets/atlas-globo-aviao.png', './assets/atlas-globo-aviao.ico', './assets/icon-192.png', './assets/icon-512.png'];
 self.addEventListener('install', event => {

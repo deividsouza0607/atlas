@@ -1,0 +1,33 @@
+ATLAS PREMIUM - INSTALADOR PARA WINDOWS
+=======================================
+
+ESTE PACOTE CONTEM O PROJETO PARA GERAR O INSTALADOR .EXE NO WINDOWS.
+O instalador final ainda precisa ser compilado no computador Windows.
+
+REQUISITOS
+- Windows 10 ou Windows 11, 64 bits
+- Conexao com a internet durante a primeira compilacao
+- Node.js LTS instalado: https://nodejs.org/
+
+COMO GERAR O INSTALADOR
+1. Extraia TODO o conteudo deste ZIP para uma pasta, por exemplo:
+   C:\AtlasPremium
+2. Instale o Node.js LTS se ainda nao estiver instalado.
+3. Feche e abra novamente o Explorador de Arquivos, se acabou de instalar Node.js.
+4. Entre na pasta extraida.
+5. Clique duas vezes em GERAR_INSTALADOR.bat.
+6. Aguarde a instalacao das dependencias e a compilacao.
+7. Ao terminar, abra a pasta dist.
+8. Execute o arquivo Atlas Premium Setup 1.0.0.exe para instalar.
+
+O instalador cria atalhos no Menu Iniciar e na Area de Trabalho e permite escolher
+onde instalar. Para abrir o aplicativo depois de instalado, use o atalho Atlas Premium.
+
+OBSERVACOES
+- A primeira compilacao pode demorar e exige internet para baixar Electron e dependencias.
+- O ZIP contem o projeto-fonte do instalador, nao o .EXE ja compilado.
+- Os dados salvos pelo aplicativo no armazenamento local do navegador/Electron podem
+  depender do perfil local do Windows. Faça backup dos dados importantes.
+- O aplicativo pode precisar de internet para carregar bibliotecas externas, como jsPDF.
+- O arquivo de icone incluso e um icone generico de globo/viagem; pode ser substituido
+  pelo icone oficial da marca mantendo o nome assets\atlas-globo-aviao.ico.

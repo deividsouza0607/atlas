@@ -7,6 +7,7 @@ let currentLocation = null;
 let photoProcessing = false;
 let editingCardId = null;
 let currentPreviewCard = null;
+let pendingAchievementCelebrations = [];
 
 function loadCards() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
@@ -99,6 +100,8 @@ function renderPreview(card) {
   currentPreviewCard = card;
   const art = document.getElementById("cardArt"); if (art) { art.classList.toggle("photo-portrait", card.photoOrientation === "9:16"); art.classList.toggle("photo-landscape", card.photoOrientation !== "9:16"); }
   currentCardId = card.id;
+  const previewCardElement = document.getElementById("travelCard");
+  if (previewCardElement) previewCardElement.classList.toggle("travel-card-portrait", card.photoOrientation === "9:16");
   applyPreviewPalette(card);
   const flag = document.getElementById("previewFlag"); if (flag) { flag.textContent = flagForCountry(card.country); flag.title = "Bandeira: " + card.country; }
   $("previewCountry").textContent = safeText(card.country).toLocaleUpperCase("pt-BR") || "PAÍS A DESCOBRIR";
@@ -128,8 +131,11 @@ function renderAlbum() {
   }
   grid.innerHTML = "";
   [...cards].reverse().forEach(card => {
-    const item = document.createElement("article"); item.className = "album-item";
+    const item = document.createElement("article");
+    item.className = "album-item";
+    item.classList.toggle("album-item-portrait", card.photoOrientation === "9:16");
     const thumb = document.createElement("button"); thumb.type = "button"; thumb.className = "album-thumb";
+    thumb.classList.toggle("album-thumb-portrait", card.photoOrientation === "9:16");
     thumb.setAttribute("aria-label", `Ver carta de ${card.landmark}`);
     if (card.photo) { const img = document.createElement("img"); img.src = card.photo; img.alt = ""; thumb.appendChild(img); }
     const overlay = document.createElement("span"); overlay.className = "mini-card-shade";
@@ -170,6 +176,7 @@ function openLargeCard(card) {
   large.querySelectorAll("button").forEach(button => button.remove());
   holder.replaceChildren(large);
   enableInteractive3DCard(large);
+  large.addEventListener("animationend", () => large.classList.remove("large-card-enter"), { once: true });
   if (previous && previous.id !== card.id) renderPreview(previous);
   modal.hidden = false;
   document.body.classList.add("large-card-open");
@@ -268,16 +275,36 @@ function playAchievementSound() {
   } catch (error) { /* Áudio indisponível: a animação continua normalmente. */ }
 }
 
-function celebrateAchievement(milestone, country, count) {
+// Cada conquista recebe uma identidade visual própria: cor, ornamento e brilho da moldura.
+function achievementFrame(milestone, category = "country") {
+  const categoryOffset = category === "state" ? 41 : category === "exploration" ? 83 : 0;
+  const hue = (Number(milestone?.count || 1) * 43 + categoryOffset) % 360;
+  const count = Number(milestone?.count || 1);
+  const frame = count >= 500 ? "legendary" : count >= 100 ? "diamond" : count >= 30 ? "royal" : count >= 10 ? "gold" : count >= 5 ? "silver" : count >= 3 ? "bronze" : "starter";
+  return { hue, frame };
+}
+
+function applyAchievementFrame(element, milestone, category = "country") {
+  if (!element) return;
+  const config = achievementFrame(milestone, category);
+  element.style.setProperty("--frame-hue", String(config.hue));
+  element.dataset.frame = config.frame;
+  element.dataset.achievement = safeText(milestone?.name);
+}
+
+function celebrateAchievement(milestone, country, count, description, detail, category = "country") {
   const modal = $("achievementCelebration");
   if (!modal) return;
   $("celebrationIcon").textContent = milestone.icon;
   $("celebrationTitle").textContent = milestone.name;
-  $("celebrationDescription").textContent = `Você desbloqueou a marca de ${milestone.count} ${milestone.count === 1 ? "foto" : "fotos"} deste país!`;
-  $("celebrationCountry").textContent = `${flagForCountry(country)} ${country} · ${count} ${count === 1 ? "foto registrada" : "fotos registradas"}`;
+  $("celebrationDescription").textContent = description || `Você desbloqueou a marca de ${milestone.count} ${milestone.count === 1 ? "foto" : "fotos"} deste país!`;
+  $("celebrationCountry").textContent = detail || `${flagForCountry(country)} ${country} · ${count} ${count === 1 ? "foto registrada" : "fotos registradas"}`;
   modal.hidden = false;
   document.body.classList.add("celebration-open");
   const panel = modal.querySelector(".celebration-panel");
+  applyAchievementFrame(panel, milestone, category);
+  applyAchievementFrame($("celebrationIcon"), milestone, category);
+  modal.dataset.achievementCategory = category;
   panel.classList.remove("celebration-enter");
   void panel.offsetWidth;
   panel.classList.add("celebration-enter");
@@ -295,10 +322,84 @@ function celebrateAchievement(milestone, country, count) {
   $("celebrationOk").focus();
 }
 
+function showNextAchievementCelebration() {
+  if (!pendingAchievementCelebrations.length) return;
+  const next = pendingAchievementCelebrations.shift();
+  celebrateAchievement(next.milestone, next.subject, next.count, next.description, next.detail, next.type);
+}
 function closeAchievementCelebration() {
   const modal = $("achievementCelebration");
   if (modal) modal.hidden = true;
   document.body.classList.remove("celebration-open");
+  // Se uma única carta desbloquear várias insígnias, mostra cada animação
+  // individualmente, sem sobrepor uma celebração à outra.
+  if (pendingAchievementCelebrations.length) window.setTimeout(showNextAchievementCelebration, 180);
+}
+
+function getUnlockedAchievementRecords(cardList) {
+  const records = [];
+  const withPhotos = cardList.filter(card => card.photo && safeText(card.country));
+  const addMilestones = (type, subject, total, milestones, unit) => {
+    milestones.forEach(m => {
+      if (total >= m.count) records.push({
+        key: `${type}|${normalizePlace(subject)}|${m.count}`,
+        milestone: m, subject, count: total, type, unit,
+        description: `Você desbloqueou “${m.name}” no desafio ${type === "country" ? "de fotos do país" : type === "state" ? "dos estados brasileiros" : "de exploração"}!`,
+        detail: `${type === "country" ? flagForCountry(subject) : type === "state" ? "🇧🇷" : "🧭"} ${subject} · ${total} ${unit}`
+      });
+    });
+  };
+
+  const byCountry = new Map();
+  withPhotos.forEach(card => {
+    const key = normalizePlace(card.country);
+    if (!byCountry.has(key)) byCountry.set(key, {name: safeText(card.country), count: 0});
+    byCountry.get(key).count++;
+  });
+  byCountry.forEach(country => addMilestones("country", country.name, country.count, ACHIEVEMENT_MILESTONES, "fotos"));
+
+  const byState = new Map();
+  withPhotos.filter(card => /^(brasil|brazil)$/.test(normalizePlace(card.country)) && safeText(card.state)).forEach(card => {
+    const key = normalizePlace(card.state);
+    if (!byState.has(key)) byState.set(key, {name: safeText(card.state), count: 0});
+    byState.get(key).count++;
+  });
+  byState.forEach(state => addMilestones("state", state.name, state.count, STATE_MILESTONES, "fotos"));
+
+  const uniqueCount = values => new Set(values.filter(Boolean)).size;
+  const cities = uniqueCount(withPhotos.map(c => `${normalizePlace(c.country)}|${normalizePlace(c.city)}`));
+  const landmarks = uniqueCount(withPhotos.map(c => `${normalizePlace(c.country)}|${normalizePlace(c.city)}|${normalizePlace(c.landmark)}`));
+  const countries = uniqueCount(withPhotos.map(c => normalizePlace(c.country)));
+  const states = uniqueCount(withPhotos.filter(c => /^(brasil|brazil)$/.test(normalizePlace(c.country))).map(c => normalizePlace(c.state)));
+  const gpsTrips = withPhotos.filter(c => c.location && Number.isFinite(Number(c.location.latitude)) && Number.isFinite(Number(c.location.longitude))).length;
+  const months = uniqueCount(withPhotos.map(c => /^\d{4}-\d{2}-\d{2}$/.test(c.visitDate || "") ? c.visitDate.slice(0, 7) : ""));
+  const challenges = [
+    {name:"Desbravador de cidades", count:cities, unit:"cidades", milestones:[{count:1,icon:"🏙️",name:"Primeira cidade"},{count:3,icon:"🚏",name:"Rota urbana"},{count:5,icon:"🗺️",name:"Explorador de cidades"},{count:10,icon:"🌆",name:"Viajante metropolitano"},{count:20,icon:"🌇",name:"Mestre das cidades"}]},
+    {name:"Caçador de pontos turísticos", count:landmarks, unit:"pontos turísticos", milestones:[{count:1,icon:"📍",name:"Primeiro ponto"},{count:5,icon:"🔎",name:"Caçador de atrações"},{count:10,icon:"📸",name:"Colecionador de atrações"},{count:25,icon:"🏛️",name:"Especialista em destinos"},{count:50,icon:"💎",name:"Lenda dos pontos turísticos"}]},
+    {name:"Passaporte mundial", count:countries, unit:"países", milestones:[{count:1,icon:"🛫",name:"Primeira fronteira"},{count:2,icon:"🌎",name:"Viajante internacional"},{count:3,icon:"🧭",name:"Explorador global"},{count:5,icon:"🌐",name:"Cidadão do mundo"},{count:10,icon:"👑",name:"Lenda internacional"}]},
+    {name:"Desafio dos estados brasileiros", count:states, unit:"estados", milestones:[{count:1,icon:"🇧🇷",name:"Primeiro estado"},{count:3,icon:"🧭",name:"Explorador regional"},{count:5,icon:"🛣️",name:"Viajante brasileiro"},{count:10,icon:"🏅",name:"Grande explorador do Brasil"},{count:20,icon:"👑",name:"Lenda brasileira"}]},
+    {name:"Rastreador GPS", count:gpsTrips, unit:"viagens com GPS", milestones:[{count:1,icon:"🛰️",name:"Primeira localização"},{count:3,icon:"📡",name:"Rastreador ativo"},{count:5,icon:"🧭",name:"Navegador preciso"},{count:10,icon:"🌐",name:"Explorador geolocalizado"}]},
+    {name:"Viajante de todas as estações", count:months, unit:"meses diferentes", milestones:[{count:1,icon:"🗓️",name:"Diário de viagem"},{count:3,icon:"🌤️",name:"Viajante frequente"},{count:6,icon:"🍂",name:"Meio ano explorando"},{count:12,icon:"🌟",name:"Ano inteiro na estrada"}]}
+  ];
+  challenges.forEach(challenge => {
+    challenge.milestones.forEach(m => {
+      if (challenge.count >= m.count) records.push({
+        key: `exploration|${normalizePlace(challenge.name)}|${m.count}`,
+        milestone: m, subject: challenge.name, count: challenge.count, type: "exploration", unit: challenge.unit,
+        description: `Você desbloqueou “${m.name}” no desafio ${challenge.name}!`,
+        detail: `${challenge.icon || "🧭"} ${challenge.name} · ${challenge.count} ${challenge.unit}`
+      });
+    });
+  });
+  return records;
+}
+
+function queueNewAchievements(previousRecords, currentRecords) {
+  const previousKeys = new Set(previousRecords.map(record => record.key));
+  const newlyUnlocked = currentRecords.filter(record => !previousKeys.has(record.key));
+  if (!newlyUnlocked.length) return;
+  pendingAchievementCelebrations.push(...newlyUnlocked);
+  if ($("achievementCelebration")?.hidden) showNextAchievementCelebration();
 }
 
 function renderAchievements() {
@@ -327,6 +428,7 @@ function renderAchievements() {
     milestones.forEach(milestone => {
       const unlocked = country.count >= milestone.count;
       const badge = document.createElement("div"); badge.className = "achievement-badge" + (unlocked ? " unlocked" : " locked");
+      applyAchievementFrame(badge, milestone, "country");
       badge.title = `${milestone.name}: ${milestone.count} foto(s) de ${country.name}`;
       const icon = document.createElement("span"); icon.className = "achievement-icon"; icon.textContent = milestone.icon;
       const label = document.createElement("b"); label.textContent = milestone.count + "+ fotos";
@@ -382,6 +484,7 @@ function renderStateAchievements() {
     STATE_MILESTONES.forEach(m => {
       const unlocked = state.count >= m.count;
       const badge = document.createElement("div"); badge.className = "achievement-badge" + (unlocked ? " unlocked" : " locked");
+      applyAchievementFrame(badge, m, "state");
       badge.title = `${m.name}: ${m.count} foto(s) em ${state.name}`;
       const icon = document.createElement("span"); icon.className = "achievement-icon"; icon.textContent = m.icon;
       const label = document.createElement("b"); label.textContent = `${m.count}+ fotos`;
@@ -395,6 +498,63 @@ function renderStateAchievements() {
   });
 }
 
+function renderExplorationAchievements() {
+  const grid = $("explorationAchievementsGrid");
+  if (!grid) return;
+  const withPhotos = cards.filter(card => card.photo && safeText(card.country));
+  const uniqueCount = values => new Set(values.filter(Boolean)).size;
+  const cities = uniqueCount(withPhotos.map(c => `${normalizePlace(c.country)}|${normalizePlace(c.city)}`));
+  const landmarks = uniqueCount(withPhotos.map(c => `${normalizePlace(c.country)}|${normalizePlace(c.city)}|${normalizePlace(c.landmark)}`));
+  const countries = uniqueCount(withPhotos.map(c => normalizePlace(c.country)));
+  const states = uniqueCount(withPhotos.filter(c => /^(brasil|brazil)$/.test(normalizePlace(c.country))).map(c => normalizePlace(c.state)));
+  const gpsTrips = withPhotos.filter(c => c.location && Number.isFinite(Number(c.location.latitude)) && Number.isFinite(Number(c.location.longitude))).length;
+  const months = uniqueCount(withPhotos.map(c => /^\d{4}-\d{2}-\d{2}$/.test(c.visitDate || "") ? c.visitDate.slice(0, 7) : ""));
+  const challenges = [
+    {name:"Desbravador de cidades", icon:"🏙️", count:cities, unit:"cidades", milestones:[{count:1,icon:"🏙️",name:"Primeira cidade"},{count:3,icon:"🚏",name:"Rota urbana"},{count:5,icon:"🗺️",name:"Explorador de cidades"},{count:10,icon:"🌆",name:"Viajante metropolitano"},{count:20,icon:"🌇",name:"Mestre das cidades"}]},
+    {name:"Caçador de pontos turísticos", icon:"📍", count:landmarks, unit:"pontos turísticos", milestones:[{count:1,icon:"📍",name:"Primeiro ponto"},{count:5,icon:"🔎",name:"Caçador de atrações"},{count:10,icon:"📸",name:"Colecionador de atrações"},{count:25,icon:"🏛️",name:"Especialista em destinos"},{count:50,icon:"💎",name:"Lenda dos pontos turísticos"}]},
+    {name:"Passaporte mundial", icon:"🌎", count:countries, unit:"países", milestones:[{count:1,icon:"🛫",name:"Primeira fronteira"},{count:2,icon:"🌎",name:"Viajante internacional"},{count:3,icon:"🧭",name:"Explorador global"},{count:5,icon:"🌐",name:"Cidadão do mundo"},{count:10,icon:"👑",name:"Lenda internacional"}]},
+    {name:"Desafio dos estados brasileiros", icon:"🇧🇷", count:states, unit:"estados", milestones:[{count:1,icon:"🇧🇷",name:"Primeiro estado"},{count:3,icon:"🧭",name:"Explorador regional"},{count:5,icon:"🛣️",name:"Viajante brasileiro"},{count:10,icon:"🏅",name:"Grande explorador do Brasil"},{count:20,icon:"👑",name:"Lenda brasileira"}]},
+    {name:"Rastreador GPS", icon:"🛰️", count:gpsTrips, unit:"viagens com GPS", milestones:[{count:1,icon:"🛰️",name:"Primeira localização"},{count:3,icon:"📡",name:"Rastreador ativo"},{count:5,icon:"🧭",name:"Navegador preciso"},{count:10,icon:"🌐",name:"Explorador geolocalizado"}]},
+    {name:"Viajante de todas as estações", icon:"🗓️", count:months, unit:"meses diferentes", milestones:[{count:1,icon:"🗓️",name:"Diário de viagem"},{count:3,icon:"🌤️",name:"Viajante frequente"},{count:6,icon:"🍂",name:"Meio ano explorando"},{count:12,icon:"🌟",name:"Ano inteiro na estrada"}]}
+  ];
+  if (!withPhotos.length) {
+    grid.innerHTML = '<div class="achievement-empty">Adicione fotos às cartas para começar os desafios de exploração.</div>';
+    return;
+  }
+  grid.replaceChildren();
+  challenges.forEach(challenge => {
+    const panel = document.createElement("article"); panel.className = "country-achievement exploration-achievement";
+    const heading = document.createElement("div"); heading.className = "country-achievement-heading";
+    const name = document.createElement("h3"); name.textContent = `${challenge.icon} ${challenge.name}`;
+    const total = document.createElement("span"); total.className = "photo-total"; total.textContent = `${challenge.count} ${challenge.unit}`;
+    heading.append(name, total);
+    const badges = document.createElement("div"); badges.className = "badge-list";
+    challenge.milestones.forEach(m => {
+      const unlocked = challenge.count >= m.count;
+      const badge = document.createElement("div"); badge.className = "achievement-badge" + (unlocked ? " unlocked" : " locked");
+      applyAchievementFrame(badge, m, "exploration");
+      badge.title = `${m.name}: ${m.count} ${challenge.unit}`;
+      const icon = document.createElement("span"); icon.className = "achievement-icon"; icon.textContent = m.icon;
+      const label = document.createElement("b"); label.textContent = `${m.count}+`;
+      const caption = document.createElement("small"); caption.textContent = unlocked ? m.name : `${Math.max(0, m.count - challenge.count)} para desbloquear`;
+      badge.append(icon, label, caption); badges.appendChild(badge);
+    });
+    const next = challenge.milestones.find(m => challenge.count < m.count);
+    const progress = document.createElement("p"); progress.className = "achievement-progress";
+    if (next) {
+      progress.textContent = `Próxima: ${next.name} · ${challenge.count}/${next.count} ${challenge.unit}`;
+      const bar = document.createElement("div"); bar.className = "achievement-progress-track";
+      const previous = challenge.milestones.filter(m => m.count < next.count).slice(-1)[0]?.count || 0;
+      const fill = document.createElement("span"); fill.style.width = `${Math.min(100, Math.round(((challenge.count - previous) / (next.count - previous)) * 100))}%`;
+      bar.appendChild(fill); panel.append(heading, badges, progress, bar);
+    } else {
+      progress.textContent = "Desafio completo! Todas as insígnias foram conquistadas.";
+      panel.append(heading, badges, progress);
+    }
+    grid.appendChild(panel);
+  });
+}
+
 function renderStatsOnly() {
   $("countryCount").textContent = new Set(cards.map(c => normalizePlace(c.country)).filter(Boolean)).size;
   $("cardCount").textContent = cards.length;
@@ -402,6 +562,7 @@ function renderStatsOnly() {
   $("allPdfBtn").disabled = cards.length === 0;
   renderAchievements();
   renderStateAchievements();
+  renderExplorationAchievements();
 }
 function dataUrlToBlob(dataUrl) {
   const parts = dataUrl.split(",");
@@ -558,6 +719,7 @@ $("travelForm").addEventListener("submit", (event) => {
   const duplicate = cards.find(c => c.id !== card.id && placeKey(c) === placeKey(card));
   if (duplicate) { alert(`Este local já está registrado no álbum: ${duplicate.landmark} — ${duplicate.city}, ${duplicate.country}.`); return; }
   const wasEditing = Boolean(existing);
+  const achievementsBeforeSave = !wasEditing && card.photo ? getUnlockedAchievementRecords(cards) : [];
   const previousCountryPhotoCount = card.photo ? countPhotosForCountry(card.country) : 0;
   if (wasEditing) {
     const index = cards.findIndex(item => item.id === card.id);
@@ -570,9 +732,8 @@ $("travelForm").addEventListener("submit", (event) => {
   }
   renderPreview(card); renderAlbum(); renderStatsOnly();
   if (!wasEditing && card.photo) {
-    const newCount = previousCountryPhotoCount + 1;
-    const unlocked = ACHIEVEMENT_MILESTONES.find(milestone => milestone.count === newCount);
-    if (unlocked) celebrateAchievement(unlocked, card.country, newCount);
+    const achievementsAfterSave = getUnlockedAchievementRecords(cards);
+    queueNewAchievements(achievementsBeforeSave, achievementsAfterSave);
   }
   cancelEdit();
   renderPreview(card); renderAlbum();
@@ -734,55 +895,92 @@ $("allPdfBtn").addEventListener("click", async () => {
   const button = $("allPdfBtn");
   const originalLabel = button.textContent;
   button.disabled = true;
-  button.textContent = "GERANDO ÁLBUM PDF...";
+  button.textContent = "MONTANDO ÁLBUM PDF...";
   try {
     if (!window.jspdf || !window.jspdf.jsPDF) {
       throw new Error("A biblioteca de PDF não carregou. Confira a conexão com a internet, atualize a página e tente novamente.");
     }
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({orientation:"portrait", unit:"mm", format:"a4"});
-    cards.forEach((card, index) => {
-    if (index > 0) doc.addPage();
-    doc.setFillColor(25, 12, 42); doc.rect(0, 0, 210, 297, "F");
-    doc.setDrawColor(197, 160, 255); doc.setLineWidth(.7); doc.roundedRect(12, 12, 186, 273, 4, 4, "S");
-    doc.setTextColor(218, 190, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-    doc.text("ATLAS PREMIUM  /  PASSPORT COLLECTION", 20, 24);
-    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "normal"); doc.setFontSize(10);
-    doc.text(`CARTA Nº ${String(index + 1).padStart(3, "0")}`, 190, 24, {align:"right"});
-    let y = 42;
-    if (card.photo) {
-      try {
-        const format = card.photo.startsWith("data:image/png") ? "PNG" : "JPEG";
-        doc.addImage(card.photo, format, 20, y, 170, 75, undefined, "FAST");
-        y += 85;
-      } catch { /* continue without photo if the image format cannot be embedded */ }
-    } else {
-      doc.setFillColor(58, 33, 83); doc.roundedRect(20, y, 170, 48, 3, 3, "F");
-      doc.setTextColor(218, 190, 255); doc.setFontSize(18); doc.text("✦", 105, y + 27, {align:"center"});
-      y += 58;
-    }
-    doc.setTextColor(218, 190, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-    doc.text(String(card.country).toLocaleUpperCase("pt-BR"), 20, y);
-    y += 10; doc.setTextColor(255, 255, 255); doc.setFont("times", "bold"); doc.setFontSize(24);
-    const titleLines = doc.splitTextToSize(card.landmark, 165); doc.text(titleLines, 20, y); y += titleLines.length * 9 + 2;
-    doc.setFont("helvetica", "normal"); doc.setFontSize(12); doc.setTextColor(207, 195, 224);
-    doc.text(`${card.city}  ·  ${formattedDate(card.visitDate)}`, 20, y); y += 13;
-    doc.setTextColor(245, 239, 255); doc.setFont("times", "italic"); doc.setFontSize(13);
-    const letterLines = doc.splitTextToSize(makeLetter(card), 165);
-    doc.text(letterLines.slice(0, 9), 20, y); y += Math.min(letterLines.length, 9) * 7 + 12;
-    if (card.memory) {
-      doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(218, 190, 255); doc.text("LEMBRANÇA ESPECIAL", 20, Math.min(y, 258));
-      doc.setFont("helvetica", "normal"); doc.setTextColor(245, 239, 255); doc.setFontSize(10);
-      doc.text(doc.splitTextToSize(card.memory, 165).slice(0, 3), 20, Math.min(y + 7, 266));
-    }
-    doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(197, 160, 255);
-    doc.text("MEMÓRIAS QUE ATRAVESSAM FRONTEIRAS", 105, 277, {align:"center"});
+    const doc = new jsPDF({orientation:"portrait", unit:"mm", format:"a4", compress:true});
+    const pageW = 210, pageH = 297;
+    const orderedCards = [...cards].slice().reverse();
+    // Capa editorial
+    doc.setFillColor(17, 8, 31); doc.rect(0, 0, pageW, pageH, "F");
+    doc.setFillColor(42, 15, 69); doc.circle(105, 92, 65, "F");
+    doc.setDrawColor(218, 177, 91); doc.setLineWidth(1.1); doc.roundedRect(13, 13, 184, 271, 5, 5, "S");
+    doc.setDrawColor(153, 72, 220); doc.setLineWidth(.5); doc.roundedRect(18, 18, 174, 261, 4, 4, "S");
+    doc.setTextColor(232, 197, 111); doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+    doc.text("ATLAS PREMIUM", 105, 47, {align:"center"});
+    doc.setTextColor(255, 248, 229); doc.setFont("times", "bold"); doc.setFontSize(31);
+    doc.text("Meu Álbum de Viagens", 105, 70, {align:"center"});
+    doc.setTextColor(210, 184, 234); doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+    doc.text("Lugares, histórias e lembranças para guardar", 105, 81, {align:"center"});
+    // Faixa de miniaturas na capa
+    const coverCards = orderedCards.slice(0, 3), coverW = 45, coverH = 75, coverGap = 7;
+    const coverStart = (pageW - (coverCards.length * coverW + (coverCards.length - 1) * coverGap)) / 2;
+    coverCards.forEach((card, i) => {
+      const x = coverStart + i * (coverW + coverGap), y = 111;
+      doc.setFillColor(35, 20, 53); doc.roundedRect(x, y, coverW, coverH, 2, 2, "F");
+      doc.setDrawColor(218, 177, 91); doc.setLineWidth(.6); doc.roundedRect(x, y, coverW, coverH, 2, 2, "S");
+      if (card.photo) { try { doc.addImage(card.photo, card.photo.startsWith("data:image/png") ? "PNG" : "JPEG", x+2, y+2, coverW-4, 48, undefined, "FAST"); } catch {} }
+      doc.setTextColor(235, 205, 130); doc.setFont("helvetica", "bold"); doc.setFontSize(5.5);
+      doc.text(String(card.country || "DESTINO").toLocaleUpperCase("pt-BR").slice(0, 25), x+3, y+55);
+      doc.setTextColor(255, 255, 255); doc.setFont("times", "bold"); doc.setFontSize(7);
+      doc.text(doc.splitTextToSize(String(card.landmark || "Minha viagem"), coverW-6).slice(0,2), x+3, y+62);
     });
+    doc.setTextColor(255, 248, 229); doc.setFont("helvetica", "bold"); doc.setFontSize(15);
+    doc.text(`${orderedCards.length} ${orderedCards.length === 1 ? "carta de viagem" : "cartas de viagem"}`, 105, 218, {align:"center"});
+    doc.setTextColor(207, 183, 227); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    doc.text(`${new Set(orderedCards.map(c => normalizePlace(c.country)).filter(Boolean)).size} países registrados`, 105, 229, {align:"center"});
+    doc.setDrawColor(218, 177, 91); doc.line(45, 246, 165, 246);
+    doc.setTextColor(218, 177, 91); doc.setFontSize(8); doc.text("GRANDES VIAGENS, GRANDES HISTÓRIAS", 105, 258, {align:"center"});
+
+    // Páginas-galeria: seis miniaturas elegantes por página, com imagem e legenda.
+    const cols = 2, rows = 3, marginX = 15, topY = 31, gapX = 8, gapY = 8;
+    const tileW = (pageW - marginX*2 - gapX) / cols, tileH = 78;
+    for (let base = 0; base < orderedCards.length; base += cols*rows) {
+      doc.addPage();
+      doc.setFillColor(17, 8, 31); doc.rect(0, 0, pageW, pageH, "F");
+      doc.setDrawColor(218, 177, 91); doc.setLineWidth(.6); doc.roundedRect(10, 10, 190, 277, 4, 4, "S");
+      doc.setTextColor(232, 197, 111); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+      doc.text("ATLAS PREMIUM  /  GALERIA DE VIAGENS", 16, 21);
+      doc.setTextColor(210, 184, 234); doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+      doc.text(`CARTAS ${base+1}–${Math.min(base+cols*rows, orderedCards.length)}`, 194, 21, {align:"right"});
+      orderedCards.slice(base, base+cols*rows).forEach((card, localIndex) => {
+        const col = localIndex % cols, row = Math.floor(localIndex / cols);
+        const x = marginX + col*(tileW+gapX), y = topY + row*(tileH+gapY);
+        doc.setFillColor(32, 18, 49); doc.roundedRect(x, y, tileW, tileH, 3, 3, "F");
+        doc.setDrawColor(137, 72, 173); doc.setLineWidth(.45); doc.roundedRect(x, y, tileW, tileH, 3, 3, "S");
+        // Miniatura de carta à esquerda
+        const imgX=x+3, imgY=y+3, imgW=tileW*.43, imgH=tileH-6;
+        doc.setFillColor(48, 28, 69); doc.roundedRect(imgX, imgY, imgW, imgH, 2, 2, "F");
+        if (card.photo) { try { doc.addImage(card.photo, card.photo.startsWith("data:image/png") ? "PNG" : "JPEG", imgX+1, imgY+1, imgW-2, imgH-2, undefined, "FAST"); } catch {} }
+        doc.setDrawColor(218, 177, 91); doc.setLineWidth(.45); doc.roundedRect(imgX, imgY, imgW, imgH, 2, 2, "S");
+        const textX = imgX+imgW+4, textW = tileW-(textX-x)-4;
+        doc.setTextColor(232, 197, 111); doc.setFont("helvetica", "bold"); doc.setFontSize(6.5);
+        doc.text(String(card.country || "DESTINO").toLocaleUpperCase("pt-BR").slice(0, 32), textX, y+11);
+        doc.setTextColor(255, 250, 238); doc.setFont("times", "bold"); doc.setFontSize(11);
+        const titleLines = doc.splitTextToSize(String(card.landmark || "Carta de viagem"), textW).slice(0,2);
+        doc.text(titleLines, textX, y+22);
+        let infoY = y+22+titleLines.length*5;
+        doc.setTextColor(207, 190, 222); doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+        const cityLines = doc.splitTextToSize(String(card.city || ""), textW).slice(0,2);
+        if (cityLines.length) { doc.text(cityLines, textX, infoY); infoY += cityLines.length*3.5+2; }
+        doc.setTextColor(232, 197, 111); doc.setFontSize(6.5);
+        doc.text(formattedDate(card.visitDate), textX, Math.min(y+tileH-8, infoY+3));
+        doc.setTextColor(145, 121, 167); doc.setFontSize(6);
+        doc.text(`Nº ${String(base+localIndex+1).padStart(3,"0")}`, x+tileW-4, y+tileH-3, {align:"right"});
+      });
+      doc.setDrawColor(77, 47, 103); doc.line(16, 275, 194, 275);
+      doc.setTextColor(180, 157, 204); doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+      doc.text("MINHAS VIAGENS • MINHAS MEMÓRIAS", 105, 281, {align:"center"});
+      doc.text(`PÁGINA ${doc.getNumberOfPages()}`, 194, 281, {align:"right"});
+    }
     const pdfBlob = doc.output("blob");
-    await downloadBlob(pdfBlob, "Atlas_Premium_Album_Completo.pdf");
+    await downloadBlob(pdfBlob, "Atlas_Premium_Album_Miniaturas.pdf");
   } catch (err) {
     console.error("Falha ao exportar álbum PDF:", err);
-    alert("Não foi possível baixar o álbum. Verifique a conexão com a internet e tente novamente.\\nDetalhe: " + (err?.message || err));
+    alert("Não foi possível baixar o álbum. Verifique a conexão com a internet e tente novamente.\nDetalhe: " + (err?.message || err));
   } finally {
     button.disabled = cards.length === 0;
     button.textContent = originalLabel;
@@ -821,79 +1019,86 @@ else {
 renderStatsOnly();
 
 
-// Efeito 3D interativo: funciona com mouse e toque, inclusive com um toque simples.
+// Efeito 3D robusto: arraste a carta com mouse ou dedo para girá-la.
 function enableInteractive3DCard(card) {
   if (!card || card.dataset.threeDReady === "true") return;
   card.dataset.threeDReady = "true";
-  let resetTimer = null;
   let dragging = false;
-  let startX = 0;
-  let startY = 0;
+  let pointerId = null;
+  let resetTimer = null;
+  let lastX = 0.5, lastY = 0.5;
   const isLargeCard = !!card.closest(".large-card-holder");
 
-  const setTilt = (x, y, strong = false) => {
-    const maxX = strong ? 10 : 16;
-    const maxY = strong ? 12 : 20;
-    card.style.transform = `perspective(1100px) rotateX(${(0.5-y)*maxX}deg) rotateY(${(x-0.5)*maxY}deg) translateY(-4px) scale(1.018)`;
+  card.style.transformStyle = "preserve-3d";
+  card.style.transformOrigin = "center center";
+  card.style.willChange = "transform";
+  if (isLargeCard) card.style.touchAction = "none";
+
+  const setTilt = (clientX, clientY, strength = 1) => {
+    const rect = card.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(rect.width, 1)));
+    const y = Math.max(0, Math.min(1, (clientY - rect.top) / Math.max(rect.height, 1)));
+    lastX = x; lastY = y;
+    const rotateY = (x - 0.5) * 34 * strength;
+    const rotateX = (0.5 - y) * 26 * strength;
+    card.style.transform = `perspective(1200px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) translateY(-3px) scale(1.025)`;
     card.classList.add("card-3d-touch");
   };
-  const tiltFromPointer = (event) => {
-    const rect = card.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(rect.width, 1)));
-    const y = Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(rect.height, 1)));
-    setTilt(x, y);
-  };
   const resetTilt = () => {
+    if (dragging) return;
     card.style.transform = "";
     card.classList.remove("card-3d-touch");
-    dragging = false;
   };
-  const scheduleReset = (delay = 1500) => {
+  const scheduleReset = (delay = 1800) => {
     clearTimeout(resetTimer);
     resetTimer = setTimeout(resetTilt, delay);
   };
 
   card.addEventListener("pointerdown", (event) => {
     if (event.target.closest("button, a, input, label")) return;
-    clearTimeout(resetTimer);
     dragging = true;
-    startX = event.clientX;
-    startY = event.clientY;
+    pointerId = event.pointerId;
+    clearTimeout(resetTimer);
     card.classList.add("card-3d-touch");
-    tiltFromPointer(event);
-    // Capture keeps pointer movement working consistently on touchscreens.
+    setTilt(event.clientX, event.clientY, 1);
     try { card.setPointerCapture(event.pointerId); } catch (_) {}
+    if (event.pointerType === "touch") event.preventDefault();
   });
   card.addEventListener("pointermove", (event) => {
-    if (dragging) {
-      tiltFromPointer(event);
+    if (dragging && (pointerId === null || event.pointerId === pointerId)) {
+      if (event.cancelable) event.preventDefault();
+      setTilt(event.clientX, event.clientY, 1);
       return;
     }
     if (event.pointerType === "mouse" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       const rect = card.getBoundingClientRect();
-      if (event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom) tiltFromPointer(event);
-      else { card.style.transform = ""; card.classList.remove("card-3d-touch"); }
+      if (event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom) {
+        setTilt(event.clientX, event.clientY, 0.75);
+      } else if (!dragging) resetTilt();
     }
-  });
+  }, { passive: false });
   const release = (event) => {
-    if (!dragging) return;
-    // If the finger barely moved, keep a visible angled pose after a tap.
-    const moved = Math.abs((event?.clientX ?? startX) - startX) + Math.abs((event?.clientY ?? startY) - startY);
+    if (!dragging || (event && pointerId !== null && event.pointerId !== undefined && event.pointerId !== pointerId)) return;
     dragging = false;
-    if (moved < 12 && event?.pointerType !== "mouse") setTilt(0.72, 0.32, true);
-    scheduleReset(1700);
+    pointerId = null;
+    scheduleReset(isLargeCard ? 2400 : 1200);
   };
   card.addEventListener("pointerup", release);
   card.addEventListener("pointercancel", release);
-  card.addEventListener("lostpointercapture", () => { if (dragging) scheduleReset(500); });
+  card.addEventListener("lostpointercapture", () => {
+    if (dragging) { dragging = false; pointerId = null; scheduleReset(1800); }
+  });
   card.addEventListener("pointerleave", () => {
     if (!dragging) scheduleReset(isLargeCard ? 900 : 300);
   });
   card.addEventListener("click", (event) => {
     if (event.target.closest("button, a, input, label")) return;
-    // A visible 3D tilt is applied on tap/click, even without a drag.
-    if (!card.classList.contains("card-3d-touch")) setTilt(0.72, 0.32, true);
-    scheduleReset(1700);
+    if (!card.classList.contains("card-3d-touch")) {
+      const rect = card.getBoundingClientRect();
+      setTilt(rect.left + rect.width * 0.72, rect.top + rect.height * 0.32, 1);
+    }
+    scheduleReset(2200);
   });
+  card.addEventListener("contextmenu", (event) => { if (isLargeCard) event.preventDefault(); });
 }
 enableInteractive3DCard(document.getElementById("travelCard"));
